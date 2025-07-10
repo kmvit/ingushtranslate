@@ -39,6 +39,7 @@ ALLOWED_HOSTS = (
     if os.environ.get("ALLOWED_HOSTS")
     else []
 )
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
 
 
 AUTH_USER_MODEL = "accounts.User"
