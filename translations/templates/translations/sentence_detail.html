@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Просмотр предложения №{{ sentence.sentence_number }} - {{ sentence.document.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto mt-8">
+    <!-- Заголовок -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Предложение №{{ sentence.sentence_number }}</h1>
+            <a href="{% url 'translations:sentence_list' %}" class="text-primary-600 hover:text-primary-900 text-sm">← К списку предложений</a>
+        </div>
+        <div class="px-6 py-4">
+            <div class="text-sm text-gray-600">
+                <span class="font-semibold">Документ:</span>
+                <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="text-primary-600 hover:text-primary-900">{{ sentence.document.title }}</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основной контент в двух колонках -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Левая колонка - Оригинальный текст -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Оригинальный текст</h2>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+                <div>
+                    <div class="p-4 bg-gray-50 rounded-lg border text-gray-900 min-h-[100px]">
+                        {{ sentence.original_text }}
+                    </div>
+                </div>
+                
+                <div class="border-t border-gray-200 pt-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Статус:</span>
+                        {% if sentence.status == 0 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <i class="fas fa-clock mr-1"></i> Не подтвержден
+                            </span>
+                        {% elif sentence.status == 1 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-user-check mr-1"></i> Подтвердил переводчик
+                            </span>
+                        {% elif sentence.status == 2 %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <i class="fas fa-check-circle mr-1"></i> Подтвердил корректор
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Назначено:</span>
+                        <span class="text-sm text-gray-900">
+                            {% if sentence.assigned_to %}
+                                {{ sentence.assigned_to.get_full_name|default:sentence.assigned_to.username }}
+                            {% else %}
+                                <span class="text-gray-500">Не назначено</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if user.role == 'admin' or user.role == 'representative' %}
+                    <div class="border-t border-gray-200 pt-4">
+                        <form method="post" class="space-y-3">
+                            {% csrf_token %}
+                            <div>
+                                <label for="{{ assign_form.assigned_to.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                                    Назначить переводчика
+                                </label>
+                                <div class="mt-1 flex items-center space-x-2">
+                                    {{ assign_form.assigned_to }}
+                                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                                        <i class="fas fa-user-plus mr-1"></i>Назначить
+                                    </button>
+                                </div>
+                                {% if assign_form.assigned_to.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ assign_form.assigned_to.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Дата создания:</span>
+                        <span class="text-sm text-gray-900">{{ sentence.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Дата обновления:</span>
+                        <span class="text-sm text-gray-900">{{ sentence.updated_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка - Перевод -->
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Перевод</h2>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+                {% if translation %}
+                    <div>
+                        <div class="p-4 bg-green-50 rounded-lg border text-gray-900 min-h-[100px]">
+                            {{ translation.translated_text }}
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 pt-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">Статус перевода:</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                {% if translation.status == 'approved' %}bg-green-100 text-green-800
+                                {% elif translation.status == 'rejected' %}bg-red-100 text-red-800
+                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                <i class="fas fa-{% if translation.status == 'approved' %}check{% elif translation.status == 'rejected' %}times{% else %}clock{% endif %} mr-1"></i>
+                                {{ translation.get_status_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">Переводчик:</span>
+                            <span class="text-sm text-gray-900">{{ translation.translator.get_full_name|default:translation.translator.username }}</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">Дата перевода:</span>
+                            <span class="text-sm text-gray-900">{{ translation.translated_at|date:"d.m.Y H:i" }}</span>
+                        </div>
+                        
+                        {% if translation.corrector %}
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">Корректор:</span>
+                            <span class="text-sm text-gray-900">{{ translation.corrector.get_full_name|default:translation.corrector.username }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if translation.corrected_at %}
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">Дата корректировки:</span>
+                            <span class="text-sm text-gray-900">{{ translation.corrected_at|date:"d.m.Y H:i" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="flex flex-col items-center justify-center py-12">
+                        <i class="fas fa-language text-4xl mb-4 text-gray-300"></i>
+                        <p class="text-lg font-medium text-gray-500">Перевод отсутствует</p>
+                        <p class="text-sm text-gray-400">Для этого предложения еще не создан перевод</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка возврата -->
+    <div class="mt-6 text-right">
+        <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <i class="fas fa-arrow-left mr-2"></i>Назад к документу
+        </a>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - сервис переводов{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Заголовок -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-1">Добро пожаловать в сервис переводов</h1>
+                <p class="text-gray-600">Система управления переводами документов</p>
+            </div>
+            {% if user.is_authenticated %}
+            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                <span class="font-medium">{{ user.username }}</span>
+                <span class="text-gray-400">•</span>
+                <span>{{ user.get_role_display }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Статистические карточки -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Пользователи -->
+        <a href="{% url 'dashboards:user_list' %}" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                            <i class="fas fa-users text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Всего пользователей</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ total_users }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Документы -->
+        <a href="{% url 'translations:document_list' %}" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                            <i class="fas fa-file-alt text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Всего документов</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ total_documents }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Предложения -->
+        <a href="{% url 'translations:sentence_list' %}" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                            <i class="fas fa-list text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Всего предложений</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ total_sentences }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Переводы -->
+        <a href="{% url 'translations:translation_list' %}" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                            <i class="fas fa-language text-white text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Всего переводов</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ total_translations }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Статистика переводов -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Статусы переводов -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Статусы переводов</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-700">Утверждено</span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">{{ approved_translations }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-700">На проверке</span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">{{ pending_translations }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-700">Отклонено</span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">{{ rejected_translations }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Пользователи по ролям -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Пользователи по ролям</h3>
+            <div class="space-y-4">
+                {% for role_data in users_by_role %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-primary-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-700">
+                            {% if role_data.role == 'admin' %}Администраторы
+                            {% elif role_data.role == 'representative' %}Представители республики
+                            {% elif role_data.role == 'translator' %}Переводчики
+                            {% elif role_data.role == 'corrector' %}Корректоры
+                            {% else %}{{ role_data.role|title }}{% endif %}
+                        </span>
+                    </div>
+                    <span class="text-sm font-bold text-gray-900">{{ role_data.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние активности -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Последние документы -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Последние документы</h3>
+                <a href="{% url 'translations:document_list' %}" class="text-sm text-primary-600 hover:text-primary-500">
+                    Посмотреть все
+                </a>
+            </div>
+            <div class="space-y-4">
+                {% for document in recent_documents %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ document.title }}</p>
+                        <p class="text-sm text-gray-500">{{ document.uploaded_by.get_full_name }} • {{ document.uploaded_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        <a href="{% url 'translations:document_detail' document.id %}" class="text-primary-600 hover:text-primary-500">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500 text-center py-4">Нет загруженных документов</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Последние переводы -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Последние переводы</h3>
+                <a href="{% url 'translations:translation_list' %}" class="text-sm text-primary-600 hover:text-primary-500">
+                    Посмотреть все
+                </a>
+            </div>
+            <div class="space-y-4">
+                {% for translation in recent_translations %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900">{{ translation.translator.get_full_name }} • {{ translation.translated_at|date:"d.m.Y H:i" }}</p>
+
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex items-center space-x-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                            {% if translation.status == 'approved' %}bg-green-100 text-green-800
+                            {% elif translation.status == 'rejected' %}bg-red-100 text-red-800
+                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {% if translation.status == 'approved' %}Утверждено
+                            {% elif translation.status == 'rejected' %}Отклонено
+                            {% else %}На проверке{% endif %}
+                        </span>
+                        <a href="{% url 'translations:sentence_detail' translation.sentence.id %}" 
+                           class="text-primary-600 hover:text-primary-500" 
+                           title="Просмотреть перевод">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500 text-center py-4">Нет выполненных переводов</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Быстрые действия</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'translations:document_upload' %}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                        <i class="fas fa-upload text-white text-sm"></i>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-900">Загрузить документ</p>
+                    <p class="text-sm text-gray-500">Добавить новый документ для перевода</p>
+                </div>
+            </a>
+            
+            <a href="{% url 'dashboards:user_create' %}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                        <i class="fas fa-user-plus text-white text-sm"></i>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-900">Добавить пользователя</p>
+                    <p class="text-sm text-gray-500">Создать нового пользователя системы</p>
+                </div>
+            </a>
+            
+
+        </div>
+    </div>
+</div>
+{% endblock %} 

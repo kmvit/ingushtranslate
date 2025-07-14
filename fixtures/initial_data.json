@@ -1,0 +1,176 @@
+[
+  {
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+      "username": "ahmet_translator",
+      "first_name": "Ахмет",
+      "last_name": "Албогачиев",
+      "email": "ahmet@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "translator",
+      "phone": "+7 (928) 123-45-67",
+      "is_staff": false,
+      "is_superuser": false,
+      "is_active": true,
+      "date_joined": "2024-01-02T10:00:00Z"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 3,
+    "fields": {
+      "username": "aida_translator",
+      "first_name": "Аида",
+      "last_name": "Мальсагова",
+      "email": "aida@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "translator",
+      "phone": "+7 (928) 234-56-78",
+      "is_staff": false,
+      "is_superuser": false,
+      "is_active": true,
+      "date_joined": "2024-01-03T10:00:00Z"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 4,
+    "fields": {
+      "username": "islam_corrector",
+      "first_name": "Ислам",
+      "last_name": "Евлоев",
+      "email": "islam@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "corrector",
+      "phone": "+7 (928) 345-67-89",
+      "is_staff": false,
+      "is_superuser": false,
+      "is_active": true,
+      "date_joined": "2024-01-04T10:00:00Z"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 5,
+    "fields": {
+      "username": "madina_corrector",
+      "first_name": "Мадина",
+      "last_name": "Плиева",
+      "email": "madina@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "corrector",
+      "phone": "+7 (928) 456-78-90",
+      "is_staff": false,
+      "is_superuser": false,
+      "is_active": true,
+      "date_joined": "2024-01-05T10:00:00Z"
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 6,
+    "fields": {
+      "username": "murad_representative",
+      "first_name": "Мурад",
+      "last_name": "Аушев",
+      "email": "murad@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "representative",
+      "phone": "+7 (928) 567-89-01",
+      "is_staff": false,
+      "is_superuser": false,
+      "is_active": true,
+      "date_joined": "2024-01-06T10:00:00Z"
+    }
+  },
+  {
+    "model": "translations.document",
+    "pk": 1,
+    "fields": {
+      "title": "Ингушские народные сказки",
+      "file": "documents/sample_document.txt",
+      "uploaded_by": 6,
+      "uploaded_at": "2024-01-07T10:00:00Z",
+      "is_processed": true
+    }
+  },
+  {
+    "model": "translations.sentence",
+    "pk": 1,
+    "fields": {
+      "document": 1,
+      "original_text": "Жил-был в старину один человек, и было у него три сына.",
+      "sentence_number": 1,
+      "status": 2,
+      "assigned_to": 2,
+      "created_at": "2024-01-07T11:00:00Z",
+      "updated_at": "2024-01-07T12:00:00Z"
+    }
+  },
+  {
+    "model": "translations.sentence",
+    "pk": 2,
+    "fields": {
+      "document": 1,
+      "original_text": "Когда сыновья выросли, отец позвал их к себе и сказал.",
+      "sentence_number": 2,
+      "status": 0,
+      "assigned_to": 3,
+      "created_at": "2024-01-07T11:01:00Z",
+      "updated_at": "2024-01-07T11:01:00Z"
+    }
+  },
+  {
+    "model": "translations.sentence",
+    "pk": 3,
+    "fields": {
+      "document": 1,
+      "original_text": "Дети мои, я стар и слаб, пора мне отдыхать.",
+      "sentence_number": 3,
+      "status": 0,
+      "assigned_to": 2,
+      "created_at": "2024-01-07T11:02:00Z",
+      "updated_at": "2024-01-07T11:02:00Z"
+    }
+  },
+  {
+    "model": "translations.sentence",
+    "pk": 4,
+    "fields": {
+      "document": 1,
+      "original_text": "Тот из вас, кто принесет мне самый лучший подарок, получит все мое наследство.",
+      "sentence_number": 4,
+      "status": 0,
+      "assigned_to": null,
+      "created_at": "2024-01-07T11:03:00Z",
+      "updated_at": "2024-01-07T11:03:00Z"
+    }
+  },
+  {
+    "model": "translations.sentence",
+    "pk": 5,
+    "fields": {
+      "document": 1,
+      "original_text": "Братья отправились в дальние страны искать подарки для отца.",
+      "sentence_number": 5,
+      "status": 0,
+      "assigned_to": null,
+      "created_at": "2024-01-07T11:04:00Z",
+      "updated_at": "2024-01-07T11:04:00Z"
+    }
+  },
+  {
+    "model": "translations.translation",
+    "pk": 1,
+    "fields": {
+      "sentence": 1,
+      "translated_text": "Дийнахь цхьаьна саг долуш ду хилара, цуьнга кхоъ йоI ду хилара.",
+      "translator": 2,
+      "corrector": 4,
+      "status": "approved",
+      "translated_at": "2024-01-07T12:00:00Z",
+      "corrected_at": "2024-01-07T13:00:00Z"
+    }
+  }
+] 

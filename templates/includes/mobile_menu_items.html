@@ -1,0 +1,71 @@
+<!-- Дашборд - доступен всем авторизованным пользователям -->
+{% if user.role == 'translator' %}
+    <a href="{% url 'dashboards:translator_dashboard' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                <i class="fas fa-tachometer-alt text-white text-sm"></i>
+            </div>
+            <span>Мой кабинет</span>
+        </div>
+    </a>
+{% elif user.role == 'corrector' %}
+    <a href="{% url 'dashboards:corrector_dashboard' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                <i class="fas fa-tachometer-alt text-white text-sm"></i>
+            </div>
+            <span>Мой кабинет</span>
+        </div>
+    </a>
+{% elif user.role in 'admin,representative' %}
+    <a href="{% url 'dashboards:dashboard' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                <i class="fas fa-tachometer-alt text-white text-sm"></i>
+            </div>
+            <span>Дашборд</span>
+        </div>
+    </a>
+{% endif %}
+
+<!-- Управление пользователями - только для админов и представителей -->
+{% if user.role in 'admin,representative' %}
+    <a href="{% url 'dashboards:user_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+        <div class="flex items-center">
+            <div class="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                <i class="fas fa-users text-white text-sm"></i>
+            </div>
+            <span>Пользователи</span>
+        </div>
+    </a>
+{% endif %}
+
+<!-- Документы - доступны всем -->
+<a href="{% url 'translations:document_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+    <div class="flex items-center">
+        <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+            <i class="fas fa-file-alt text-white text-sm"></i>
+        </div>
+        <span>Документы</span>
+    </div>
+</a>
+
+<!-- Предложения - доступны всем -->
+<a href="{% url 'translations:sentence_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+    <div class="flex items-center">
+        <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+            <i class="fas fa-list text-white text-sm"></i>
+        </div>
+        <span>Предложения</span>
+    </div>
+</a>
+
+<!-- Переводы - доступны всем -->
+<a href="{% url 'translations:translation_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
+    <div class="flex items-center">
+        <div class="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+            <i class="fas fa-language text-white text-sm"></i>
+        </div>
+        <span>Переводы</span>
+    </div>
+</a> 

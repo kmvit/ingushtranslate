@@ -1,0 +1,34 @@
+{# Утилиты для меню #}
+
+{# Проверка ролей пользователей #}
+{% load static %}
+
+{# Макрос для проверки доступа к функциям админа/представителя #}
+{% if user.role in 'admin,representative' %}
+    {% with is_admin_or_representative=True %}
+    {% endwith %}
+{% endif %}
+
+{# Макрос для проверки роли переводчика #}
+{% if user.role == 'translator' %}
+    {% with is_translator=True %}
+    {% endwith %}
+{% endif %}
+
+{# Макрос для проверки роли корректора #}
+{% if user.role == 'corrector' %}
+    {% with is_corrector=True %}
+    {% endwith %}
+{% endif %}
+
+{# Макрос для проверки роли администратора #}
+{% if user.role == 'admin' %}
+    {% with is_admin=True %}
+    {% endwith %}
+{% endif %}
+
+{# Макрос для проверки роли представителя #}
+{% if user.role == 'representative' %}
+    {% with is_representative=True %}
+    {% endwith %}
+{% endif %} 

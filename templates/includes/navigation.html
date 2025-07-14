@@ -1,0 +1,159 @@
+{% if user.is_authenticated %}
+<nav class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-2xl border-b border-blue-500/30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <!-- Логотип -->
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <a href="/" class="flex items-center space-x-2 group">
+                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                            <i class="fas fa-language text-blue-600 text-lg"></i>
+                        </div>
+                        <span class="text-xl font-bold text-white group-hover:text-blue-100 transition-colors duration-300">TranslateSystem</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Бургер-меню для мобильных -->
+            <div class="flex md:hidden">
+                <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-2 rounded-lg text-white hover:text-blue-100 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-blue-600 transition-all duration-200" aria-controls="mobile-menu" aria-expanded="false">
+                    <span class="sr-only">Открыть меню</span>
+                    <i class="fas fa-bars fa-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Основное меню -->
+            <div class="hidden md:flex md:items-center md:space-x-1">
+                {% include "includes/menu_items.html" %}
+            </div>
+            
+            <!-- Профиль и выход -->
+            <div class="hidden md:flex items-center space-x-3 ml-6">
+                <!-- Выпадающее меню профиля -->
+                <div class="relative" id="profile-dropdown">
+                    <button id="profile-button" class="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/20 hover:bg-white/20 transition-all duration-200 group">
+                        <div class="w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                        <span class="text-white text-sm font-medium">{{ user.username }}</span>
+                        <i class="fas fa-chevron-down text-white text-xs group-hover:rotate-180 transition-transform duration-200"></i>
+                    </button>
+                    
+                    <!-- Выпадающее меню -->
+                    <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible transform scale-95 transition-all duration-200 origin-top-right z-50">
+                        <div class="py-1">
+                            <div class="px-4 py-2 border-b border-gray-100">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-white text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">{{ user.username }}</p>
+                                        <p class="text-xs text-gray-500">{{ user.get_role_display }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="{% url 'users:logout' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-150">
+                                <i class="fas fa-sign-out-alt mr-3 text-gray-400"></i>
+                                Выход
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Мобильное меню (скрыто по умолчанию) -->
+    <div class="md:hidden bg-gradient-to-b from-blue-700 to-indigo-800 shadow-xl" id="mobile-menu" style="display: none;">
+        <div class="px-4 pt-4 pb-6 space-y-2">
+            {% include "includes/mobile_menu_items.html" %}
+            <div class="border-t border-white/20 my-4"></div>
+            <div class="flex items-center space-x-3 px-3 py-3 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-white text-sm"></i>
+                </div>
+                <span class="text-white font-medium">{{ user.username }}</span>
+            </div>
+            <a href="{% url 'users:logout' %}" class="block text-white hover:text-red-100 px-3 py-3 rounded-lg text-base font-medium bg-red-500/20 hover:bg-red-500/30 transition-all duration-200">
+                <i class="fas fa-sign-out-alt mr-3"></i>Выход
+            </a>
+        </div>
+    </div>
+</nav>
+
+<script>
+    // Открытие/закрытие мобильного меню с анимацией
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('mobile-menu-button');
+        const menu = document.getElementById('mobile-menu');
+        const icon = btn.querySelector('i');
+        
+        if (btn && menu) {
+            btn.addEventListener('click', function() {
+                if (menu.style.display === 'none' || menu.style.display === '') {
+                    menu.style.display = 'block';
+                    menu.style.opacity = '0';
+                    menu.style.transform = 'translateY(-10px)';
+                    
+                    setTimeout(() => {
+                        menu.style.opacity = '1';
+                        menu.style.transform = 'translateY(0)';
+                    }, 10);
+                    
+                    icon.className = 'fas fa-times fa-lg';
+                } else {
+                    menu.style.opacity = '0';
+                    menu.style.transform = 'translateY(-10px)';
+                    
+                    setTimeout(() => {
+                        menu.style.display = 'none';
+                    }, 200);
+                    
+                    icon.className = 'fas fa-bars fa-lg';
+                }
+            });
+        }
+        
+        // Выпадающее меню профиля
+        const profileButton = document.getElementById('profile-button');
+        const profileMenu = document.getElementById('profile-menu');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        
+        if (profileButton && profileMenu) {
+            profileButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isVisible = profileMenu.classList.contains('opacity-100');
+                
+                if (isVisible) {
+                    // Закрыть меню
+                    profileMenu.classList.remove('opacity-100', 'visible', 'scale-100');
+                    profileMenu.classList.add('opacity-0', 'invisible', 'scale-95');
+                } else {
+                    // Открыть меню
+                    profileMenu.classList.remove('opacity-0', 'invisible', 'scale-95');
+                    profileMenu.classList.add('opacity-100', 'visible', 'scale-100');
+                }
+            });
+            
+            // Закрыть меню при клике вне его
+            document.addEventListener('click', function(e) {
+                if (!profileDropdown.contains(e.target)) {
+                    profileMenu.classList.remove('opacity-100', 'visible', 'scale-100');
+                    profileMenu.classList.add('opacity-0', 'invisible', 'scale-95');
+                }
+            });
+        }
+    });
+</script>
+
+<style>
+    #mobile-menu {
+        transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    }
+    
+    #profile-menu {
+        transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    }
+</style>
+{% endif %} 

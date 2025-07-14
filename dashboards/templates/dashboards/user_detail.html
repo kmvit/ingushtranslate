@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user_obj.get_full_name }} - IngushTranslate{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Заголовок -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-16 w-16">
+                    <div class="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span class="text-xl font-medium text-primary-800">
+                            {{ user_obj.first_name|first }}{{ user_obj.last_name|first }}
+                        </span>
+                    </div>
+                </div>
+                <div class="ml-6">
+                    <h1 class="text-2xl font-bold text-gray-900">{{ user_obj.get_full_name }}</h1>
+                    <p class="text-gray-600">@{{ user_obj.username }}</p>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mt-2
+                        {% if user_obj.role == 'admin' %}bg-red-100 text-red-800
+                        {% elif user_obj.role == 'representative' %}bg-purple-100 text-purple-800
+                        {% elif user_obj.role == 'translator' %}bg-blue-100 text-blue-800
+                        {% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ user_obj.get_role_display }}
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                {% if request.user.role == 'admin' and user_obj != request.user %}
+                <a href="{% url 'dashboards:user_edit' user_obj.id %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-edit mr-2"></i>
+                    Редактировать
+                </a>
+                <form method="post" action="{% url 'dashboards:user_delete' user_obj.id %}" 
+                      class="inline" onsubmit="return confirm('Вы уверены, что хотите удалить этого пользователя?')">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <i class="fas fa-trash mr-2"></i>
+                        Удалить
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'dashboards:user_list' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Назад к списку
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация о пользователе -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Основная информация -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Основная информация</h3>
+            <dl class="space-y-4">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Полное имя</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.get_full_name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Имя пользователя</dt>
+                    <dd class="text-sm text-gray-900">@{{ user_obj.username }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Email</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.email }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Телефон</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.phone|default:"Не указан" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Роль</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.get_role_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Дата регистрации</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.date_joined|date:"d.m.Y H:i" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Последний вход</dt>
+                    <dd class="text-sm text-gray-900">{{ user_obj.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Статистика активности -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Статистика активности</h3>
+            <div class="grid grid-cols-2 gap-4">
+                {% if user_obj.role in 'admin,representative' %}
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">{{ user_documents.count }}</div>
+                    <div class="text-sm text-blue-600">Загруженных документов</div>
+                </div>
+                {% endif %}
+                {% if user_obj.role == 'translator' %}
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">{{ user_sentences.count }}</div>
+                    <div class="text-sm text-green-600">Назначенных предложений</div>
+                </div>
+                <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div class="text-2xl font-bold text-yellow-600">{{ user_translations.count }}</div>
+                    <div class="text-sm text-yellow-600">Выполненных переводов</div>
+                </div>
+                {% endif %}
+                {% if user_obj.role == 'corrector' %}
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600">{{ user_corrections.count }}</div>
+                    <div class="text-sm text-purple-600">Проверенных переводов</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика переводов -->
+    {% if user_obj.role == 'translator' %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Статистика переводов</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-green-600 mb-2">{{ approved_count }}</div>
+                <div class="text-sm text-gray-600">Утверждено</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div class="bg-green-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ approved_percentage }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-yellow-600 mb-2">{{ pending_count }}</div>
+                <div class="text-sm text-gray-600">На проверке</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div class="bg-yellow-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ pending_percentage }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-red-600 mb-2">{{ rejected_count }}</div>
+                <div class="text-sm text-gray-600">Отклонено</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div class="bg-red-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ rejected_percentage }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Последние активности -->
+    <div class="space-y-6">
+        <!-- Последние документы -->
+        {% if user_documents and user_obj.role in 'admin,representative' %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Последние документы</h3>
+            <div class="space-y-3">
+                {% for document in user_documents|slice:":5" %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ document.title }}</p>
+                        <p class="text-sm text-gray-500">{{ document.uploaded_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        <a href="{% url 'translations:document_detail' document.id %}" class="text-primary-600 hover:text-primary-500">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Назначенные предложения -->
+        {% if user_sentences and user_obj.role == 'translator' %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Назначенные предложения</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Документ</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оригинал</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for sentence in user_sentences|slice:":5" %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ sentence.document.title }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div class="truncate" title="{{ sentence.original_text }}">
+                                    {{ sentence.original_text|truncatechars:50 }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if sentence.status == 0 %}bg-gray-100 text-gray-800
+                                    {% elif sentence.status == 1 %}bg-blue-100 text-blue-800
+                                    {% elif sentence.status == 2 %}bg-green-100 text-green-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {% if sentence.status == 0 %}Не подтвержден
+                                    {% elif sentence.status == 1 %}Подтвердил переводчик
+                                    {% elif sentence.status == 2 %}Подтвердил корректор
+                                    {% else %}Неизвестно{% endif %}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if request.user == user_obj and request.user.role == 'translator' %}
+                                <a href="{% url 'translations:sentence_detail' sentence.id %}" 
+                                   class="text-primary-600 hover:text-primary-500">
+                                    <i class="fas fa-edit mr-1"></i>Перевести
+                                </a>
+                                {% else %}
+                                <a href="{% url 'translations:sentence_detail' sentence.id %}" 
+                                   class="text-primary-600 hover:text-primary-500">
+                                    <i class="fas fa-eye mr-1"></i>Просмотр
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Последние переводы -->
+        {% if user_translations and user_obj.role == 'translator' %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Последние переводы</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Документ</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оригинал</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Перевод</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for translation in user_translations|slice:":5" %}
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location.href='{% url 'translations:sentence_detail' translation.sentence.id %}'">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ translation.sentence.document.title }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div class="truncate" title="{{ translation.sentence.original_text }}">
+                                    {{ translation.sentence.original_text|truncatechars:50 }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div class="truncate" title="{{ translation.translated_text }}">
+                                    {{ translation.translated_text|truncatechars:50 }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if translation.status == 'approved' %}bg-green-100 text-green-800
+                                    {% elif translation.status == 'rejected' %}bg-red-100 text-red-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {% if translation.status == 'approved' %}Утверждено
+                                    {% elif translation.status == 'rejected' %}Отклонено
+                                    {% else %}На проверке{% endif %}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ translation.translated_at|date:"d.m.Y H:i" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Последние проверки -->
+        {% if user_corrections and user_obj.role == 'corrector' %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Последние проверки</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Документ</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Оригинал</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Перевод</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for correction in user_corrections|slice:":5" %}
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location.href='{% url 'translations:sentence_detail' correction.sentence.id %}'">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ correction.sentence.document.title }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div class="truncate" title="{{ correction.sentence.original_text }}">
+                                    {{ correction.sentence.original_text|truncatechars:50 }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div class="truncate" title="{{ correction.translated_text }}">
+                                    {{ correction.translated_text|truncatechars:50 }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if correction.status == 'approved' %}bg-green-100 text-green-800
+                                    {% elif correction.status == 'rejected' %}bg-red-100 text-red-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {% if correction.status == 'approved' %}Утверждено
+                                    {% elif correction.status == 'rejected' %}Отклонено
+                                    {% else %}На проверке{% endif %}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ correction.corrected_at|date:"d.m.Y H:i"|default:correction.translated_at|date:"d.m.Y H:i" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Пустое состояние -->
+    {% if user_obj.role == 'admin' or user_obj.role == 'representative' %}
+        {% if not user_documents %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-center py-8">
+                <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Нет активности</h3>
+                <p class="text-gray-500">У этого пользователя пока нет активности в системе.</p>
+            </div>
+        </div>
+        {% endif %}
+    {% elif user_obj.role == 'translator' %}
+        {% if not user_translations and not user_sentences %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-center py-8">
+                <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Нет активности</h3>
+                <p class="text-gray-500">У этого пользователя пока нет активности в системе.</p>
+            </div>
+        </div>
+        {% endif %}
+    {% elif user_obj.role == 'corrector' %}
+        {% if not user_corrections %}
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-center py-8">
+                <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Нет активности</h3>
+                <p class="text-gray-500">У этого пользователя пока нет активности в системе.</p>
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %} 

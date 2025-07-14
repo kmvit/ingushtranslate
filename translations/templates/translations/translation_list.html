@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if status == 'approved' %}Утвержденные переводы
+    {% elif status == 'rejected' %}Отклоненные переводы
+    {% elif status == 'pending' %}Переводы на проверке
+    {% else %}Список переводов{% endif %} - TranslateSystem
+{% endblock %}
+
+{% block content %}
+<div class="bg-white shadow rounded-lg">
+    <!-- Заголовок -->
+    <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">
+                {% if status == 'approved' %}Утвержденные переводы
+                {% elif status == 'rejected' %}Отклоненные переводы
+                {% elif status == 'pending' %}Переводы на проверке
+                {% else %}Список переводов{% endif %}
+            </h1>
+            <div class="flex space-x-3">
+                <a href="{% url 'translations:document_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-file-alt mr-2"></i>
+                    Документы
+                </a>
+                <a href="{% url 'translations:sentence_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <i class="fas fa-list mr-2"></i>
+                    Предложения
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры и поиск -->
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Поиск -->
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Поиск</label>
+                    <input type="text" name="search" id="search" value="{{ search_query }}" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                           placeholder="Поиск по тексту, переводчику...">
+                </div>
+
+                <!-- Фильтр по статусу -->
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+                    <select name="status" id="status" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Все статусы</option>
+                        <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Ожидает проверки</option>
+                        <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утверждено</option>
+                        <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклонено</option>
+                    </select>
+                </div>
+
+                <!-- Сортировка -->
+                <div>
+                    <label for="sort" class="block text-sm font-medium text-gray-700 mb-1">Сортировка</label>
+                    <select name="sort" id="sort" onchange="this.form.submit()" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="-translated_at" {% if sort_by == "-translated_at" %}selected{% endif %}>По дате перевода (новые)</option>
+                        <option value="translated_at" {% if sort_by == "translated_at" %}selected{% endif %}>По дате перевода (старые)</option>
+                        <option value="status" {% if sort_by == "status" %}selected{% endif %}>По статусу</option>
+                        <option value="translator__first_name" {% if sort_by == "translator__first_name" %}selected{% endif %}>По переводчику</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-search mr-2"></i>
+                    Применить фильтры
+                </button>
+                <a href="{% url 'translations:translation_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-times mr-2"></i>
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Таблица переводов -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Документ
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Оригинальный текст
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Перевод
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Переводчик
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Статус
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Действия
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for translation in page_obj %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">
+                            <a href="{% url 'translations:document_detail' document_id=translation.sentence.document.id %}" class="text-primary-600 hover:text-primary-900">
+                                {{ translation.sentence.document.title }}
+                            </a>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ translation.sentence.original_text }}">
+                            {{ translation.sentence.original_text|truncatechars:80 }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ translation.translated_text }}">
+                            {{ translation.translated_text|truncatechars:80 }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">
+                            {{ translation.translator.get_full_name|default:translation.translator.username }}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            {{ translation.translated_at|date:"d.m.Y H:i" }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if translation.status == 'approved' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <i class="fas fa-check mr-1"></i>
+                                Утверждено
+                            </span>
+                        {% elif translation.status == 'rejected' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <i class="fas fa-times mr-1"></i>
+                                Отклонено
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-clock mr-1"></i>
+                                На проверке
+                            </span>
+                        {% endif %}
+                        {% if translation.corrector %}
+                            <div class="text-xs text-gray-500 mt-1">
+                                Корректор: {{ translation.corrector.get_full_name|default:translation.corrector.username }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <a href="{% url 'translations:sentence_detail' sentence_id=translation.sentence.id %}" 
+                               class="text-blue-600 hover:text-blue-900" title="Просмотреть предложение">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if translation.status == 'pending' %}
+                                <a href="#" class="text-green-600 hover:text-green-900" title="Утвердить">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                <a href="#" class="text-red-600 hover:text-red-900" title="Отклонить">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <div class="flex flex-col items-center">
+                            <i class="fas fa-language text-4xl mb-4 text-gray-300"></i>
+                            <p class="text-lg font-medium">Переводы не найдены</p>
+                            <p class="text-sm">Попробуйте изменить параметры поиска</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Пагинация -->
+    {% if page_obj.has_other_pages %}
+    <div class="px-6 py-4 border-t border-gray-200">
+        <nav class="flex items-center justify-between">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if page_obj.has_previous %}
+                    <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Назад
+                    </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Вперед
+                    </a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Показано <span class="font-medium">{{ page_obj.start_index }}</span> - 
+                        <span class="font-medium">{{ page_obj.end_index }}</span> из 
+                        <span class="font-medium">{{ page_obj.paginator.count }}</span> результатов
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-primary-50 text-sm font-medium text-primary-600">
+                                    {{ num }}
+                                </span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}" 
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ num }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 
