@@ -69,8 +69,8 @@ def export_to_docx(document: Document, output_path: str) -> str:
             # Статус
             status_text = (
                 "Одобрен"
-                if translation.status == 'approved'
-                else "Отклонен" if translation.status == 'rejected' else "На проверке"
+                if translation.status == "approved"
+                else "Отклонен" if translation.status == "rejected" else "На проверке"
             )
             doc.add_paragraph(f"Статус: {status_text}")
         else:
@@ -123,9 +123,9 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
             )
 
             # Статус
-            if translation.status == 'approved':
+            if translation.status == "approved":
                 status = "Одобрен"
-            elif translation.status == 'rejected':
+            elif translation.status == "rejected":
                 status = "Отклонен"
             else:
                 status = "На проверке"
@@ -195,55 +195,65 @@ def get_document_statistics(document: Document) -> Dict:
     total_sentences = document.sentences.count()
     translated_sentences = document.sentences.filter(translation__isnull=False).count()
     approved_sentences = document.sentences.filter(
-        translation__status='approved'
+        translation__status="approved"
     ).count()
     rejected_sentences = document.sentences.filter(
-        translation__status='rejected'
+        translation__status="rejected"
     ).count()
-    pending_sentences = document.sentences.filter(
-        translation__status='pending'
-    ).count()
+    pending_sentences = document.sentences.filter(translation__status="pending").count()
 
     # Статистика по словам и знакам в предложениях
     sentences = document.sentences.all()
     total_words = 0
     total_characters = 0
     total_characters_without_spaces = 0
-    
+
     for sentence in sentences:
         # Подсчет слов (разделение по пробелам)
         words = sentence.original_text.split()
         total_words += len(words)
-        
+
         # Подсчет символов с пробелами
         total_characters += len(sentence.original_text)
-        
+
         # Подсчет символов без пробелов
-        total_characters_without_spaces += len(sentence.original_text.replace(' ', ''))
-    
+        total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
+
     # Статистика по словам и знакам в переводах
     translations = document.sentences.filter(translation__isnull=False)
     total_translated_words = 0
     total_translated_characters = 0
     total_translated_characters_without_spaces = 0
-    
+
     for sentence in translations:
         if sentence.translation:
             # Подсчет слов в переводе
             translated_words = sentence.translation.translated_text.split()
             total_translated_words += len(translated_words)
-            
+
             # Подсчет символов в переводе
             total_translated_characters += len(sentence.translation.translated_text)
-            
+
             # Подсчет символов без пробелов в переводе
-            total_translated_characters_without_spaces += len(sentence.translation.translated_text.replace(' ', ''))
-    
+            total_translated_characters_without_spaces += len(
+                sentence.translation.translated_text.replace(" ", "")
+            )
+
     # Средние показатели
-    average_words_per_sentence = total_words / total_sentences if total_sentences > 0 else 0
-    average_characters_per_sentence = total_characters / total_sentences if total_sentences > 0 else 0
-    average_translated_words_per_translation = total_translated_words / translated_sentences if translated_sentences > 0 else 0
-    average_translated_characters_per_translation = total_translated_characters / translated_sentences if translated_sentences > 0 else 0
+    average_words_per_sentence = (
+        total_words / total_sentences if total_sentences > 0 else 0
+    )
+    average_characters_per_sentence = (
+        total_characters / total_sentences if total_sentences > 0 else 0
+    )
+    average_translated_words_per_translation = (
+        total_translated_words / translated_sentences if translated_sentences > 0 else 0
+    )
+    average_translated_characters_per_translation = (
+        total_translated_characters / translated_sentences
+        if translated_sentences > 0
+        else 0
+    )
 
     return {
         "total_sentences": total_sentences,
@@ -259,8 +269,12 @@ def get_document_statistics(document: Document) -> Dict:
         "total_translated_characters_without_spaces": total_translated_characters_without_spaces,
         "average_words_per_sentence": round(average_words_per_sentence, 1),
         "average_characters_per_sentence": round(average_characters_per_sentence, 1),
-        "average_translated_words_per_translation": round(average_translated_words_per_translation, 1),
-        "average_translated_characters_per_translation": round(average_translated_characters_per_translation, 1),
+        "average_translated_words_per_translation": round(
+            average_translated_words_per_translation, 1
+        ),
+        "average_translated_characters_per_translation": round(
+            average_translated_characters_per_translation, 1
+        ),
         "completion_percentage": round(
             (
                 (translated_sentences / total_sentences * 100)
@@ -277,21 +291,34 @@ def get_document_statistics(document: Document) -> Dict:
 
 
 def export_sentences_to_csv(queryset):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename=sentences.csv'
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=sentences.csv"
     writer = csv.writer(response)
-    writer.writerow([
-        'Документ', '№ предложения', 'Оригинальный текст', 'Статус', 'Назначено', 'Перевод', 'Дата создания', 'Дата обновления'
-    ])
+    writer.writerow(
+        [
+            "Документ",
+            "№ предложения",
+            "Оригинальный текст",
+            "Статус",
+            "Назначено",
+            "Перевод",
+            "Дата создания",
+            "Дата обновления",
+        ]
+    )
     for s in queryset:
-        writer.writerow([
-            smart_str(s.document.title),
-            s.sentence_number,
-            smart_str(s.original_text),
-            s.get_status_display(),
-            smart_str(s.assigned_to.get_full_name() if s.assigned_to else ''),
-            smart_str(s.translation.translated_text if hasattr(s, 'translation') else ''),
-            s.created_at.strftime('%d.%m.%Y %H:%M'),
-            s.updated_at.strftime('%d.%m.%Y %H:%M'),
-        ])
+        writer.writerow(
+            [
+                smart_str(s.document.title),
+                s.sentence_number,
+                smart_str(s.original_text),
+                s.get_status_display(),
+                smart_str(s.assigned_to.get_full_name() if s.assigned_to else ""),
+                smart_str(
+                    s.translation.translated_text if hasattr(s, "translation") else ""
+                ),
+                s.created_at.strftime("%d.%m.%Y %H:%M"),
+                s.updated_at.strftime("%d.%m.%Y %H:%M"),
+            ]
+        )
     return response

@@ -22,7 +22,7 @@ def extract_sentences_from_text(text: str) -> List[str]:
 
     # Фильтруем пустые предложения и убираем лишние пробелы
     sentences = [s.strip() for s in sentences if s.strip()]
-    
+
     # Удаляем дублирующиеся предложения, сохраняя порядок
     seen = set()
     unique_sentences = []
