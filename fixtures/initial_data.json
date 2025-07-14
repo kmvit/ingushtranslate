@@ -88,7 +88,6 @@
     "model": "translations.document",
     "pk": 1,
     "fields": {
-      "title": "Ингушские народные сказки",
       "file": "documents/sample_document.txt",
       "uploaded_by": 6,
       "uploaded_at": "2024-01-07T10:00:00Z",
