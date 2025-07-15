@@ -297,8 +297,11 @@ class TranslatorDashboardView(LoginRequiredMixin, TranslatorOnlyMixin, TemplateV
             status=0
         )  # Не подтвержден
         context["in_progress_sentences"] = assigned_sentences.filter(
+            status=0
+        )  # Предложения в работе (не переведенные)
+        context["translated_sentences"] = assigned_sentences.filter(
             status=1
-        )  # Подтвердил переводчик
+        )  # Подтвердил переводчик (ожидает проверки)
         context["completed_sentences"] = assigned_sentences.filter(
             status=2
         )  # Подтвердил корректор
@@ -310,6 +313,7 @@ class TranslatorDashboardView(LoginRequiredMixin, TranslatorOnlyMixin, TemplateV
         ]
         context["total_assigned"] = assigned_sentences.count()
         context["total_completed"] = context["completed_sentences"].count()
+        context["total_translated"] = context["translated_sentences"].count()
 
         # Если нет назначенных предложений, показываем сообщение
         if not assigned_sentences.exists():
@@ -329,11 +333,19 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Получаем переводы, которые нужно проверить
-        context["pending_corrections"] = Translation.objects.filter(status="pending")
-        context["in_review_translations"] = Translation.objects.filter(
-            corrector=self.request.user, status="pending"
+        # Получаем все переводы, которые имеют перевод (не пустой translated_text)
+        # Корректор должен видеть все переведенные предложения
+        context["in_review_translations"] = (
+            Translation.objects.filter(translated_text__isnull=False)
+            .exclude(translated_text="")
+            .select_related("sentence__document", "translator")
+            .order_by("-translated_at")
         )
+
+        # Получаем переводы, которые нужно проверить (статус pending)
+        context["pending_corrections"] = Translation.objects.filter(status="pending")
+
+        # Получаем переводы, которые уже проверены этим корректором
         completed_corrections = Translation.objects.filter(
             corrector=self.request.user, status__in=["approved", "rejected"]
         )
@@ -349,13 +361,10 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         ).count()
 
         # Если нет переводов для проверки, показываем сообщение
-        if (
-            not context["pending_corrections"].exists()
-            and not context["in_review_translations"].exists()
-        ):
+        if not context["in_review_translations"].exists():
             messages.info(
                 self.request,
-                "В данный момент нет переводов, требующих проверки. Ожидайте новых переводов от переводчиков.",
+                "В данный момент нет переводов для проверки. Ожидайте новых переводов от переводчиков.",
             )
 
         return context

@@ -1,13 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Список предложений - TranslateSystem{% endblock %}
+{% block title %}
+    {% if user.role == 'corrector' %}
+        Предложения с переводами - TranslateSystem
+    {% else %}
+        Список предложений - TranslateSystem
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="bg-white shadow rounded-lg">
     <!-- Заголовок -->
     <div class="px-6 py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold text-gray-900">Список предложений</h1>
+            <h1 class="text-2xl font-bold text-gray-900">
+                {% if user.role == 'corrector' %}
+                    Предложения с переводами
+                {% else %}
+                    Список предложений
+                {% endif %}
+            </h1>
+            {% if user.role == 'corrector' %}
+            <div class="flex space-x-3">
+                <a href="{% url 'dashboards:corrector_dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    Кабинет корректора
+                </a>
+            </div>
+            {% elif user.role != 'translator' %}
             <div class="flex space-x-3">
                 <a href="{% url 'translations:document_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     <i class="fas fa-file-alt mr-2"></i>
@@ -18,22 +38,76 @@
                     Переводы
                 </a>
             </div>
+            {% endif %}
         </div>
     </div>
+
+    <!-- Статистика для переводчиков -->
+    {% if user.role == 'translator' and stats %}
+    <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-600">{{ stats.assigned }}</div>
+                <div class="text-sm text-gray-600">Назначено</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-yellow-600">{{ stats.translated }}</div>
+                <div class="text-sm text-gray-600">Переведено</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-600">{{ stats.approved }}</div>
+                <div class="text-sm text-gray-600">Утверждено</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-red-600">{{ stats.rejected }}</div>
+                <div class="text-sm text-gray-600">Отклонено</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-orange-600">{{ stats.pending }}</div>
+                <div class="text-sm text-gray-600">На проверке</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Статистика для корректоров -->
+    {% if user.role == 'corrector' and stats %}
+    <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-600">{{ stats.total_with_translations }}</div>
+                <div class="text-sm text-gray-600">Всего с переводами</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-yellow-600">{{ stats.pending }}</div>
+                <div class="text-sm text-gray-600">Ожидают проверки</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-600">{{ stats.approved }}</div>
+                <div class="text-sm text-gray-600">Утверждено</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-red-600">{{ stats.rejected }}</div>
+                <div class="text-sm text-gray-600">Отклонено</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Фильтры и поиск -->
     <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <form method="get" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{% if user.role == 'corrector' %}3{% else %}4{% endif %} gap-4">
                 <!-- Поиск -->
                 <div>
                     <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Поиск</label>
                     <input type="text" name="search" id="search" value="{{ search_query }}" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                           placeholder="Поиск по тексту, документу, переводчику...">
+                           placeholder="{% if user.role == 'translator' %}Поиск по тексту, переводу, документу...{% else %}Поиск по тексту, документу, переводчику...{% endif %}">
                 </div>
 
                 <!-- Фильтр по документу -->
+                {% if user.role != 'corrector' %}
                 <div>
                     <label for="document" class="block text-sm font-medium text-gray-700 mb-1">Документ</label>
                     <select name="document" id="document" 
@@ -46,6 +120,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                {% endif %}
 
                 <!-- Фильтр по статусу -->
                 <div>
@@ -53,13 +128,26 @@
                     <select name="status" id="status" 
                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
                         <option value="">Все статусы</option>
-                        <option value="0" {% if status_filter == "0" %}selected{% endif %}>Не подтвержден</option>
-                        <option value="1" {% if status_filter == "1" %}selected{% endif %}>Подтвердил переводчик</option>
-                        <option value="2" {% if status_filter == "2" %}selected{% endif %}>Подтвердил корректор</option>
+                        {% if user.role == 'translator' %}
+                            <option value="assigned" {% if status_filter == "assigned" %}selected{% endif %}>Назначенные</option>
+                            <option value="translated" {% if status_filter == "translated" %}selected{% endif %}>Переведенные</option>
+                            <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утвержденные</option>
+                            <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклоненные</option>
+                            <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>На проверке</option>
+                        {% elif user.role == 'corrector' %}
+                            <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Ожидают проверки</option>
+                            <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утвержденные</option>
+                            <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклоненные</option>
+                        {% else %}
+                            <option value="0" {% if status_filter == "0" %}selected{% endif %}>Не подтвержден</option>
+                            <option value="1" {% if status_filter == "1" %}selected{% endif %}>Подтвердил переводчик</option>
+                            <option value="2" {% if status_filter == "2" %}selected{% endif %}>Подтвердил корректор</option>
+                        {% endif %}
                     </select>
                 </div>
 
-                <!-- Фильтр по назначению -->
+                <!-- Фильтр по назначению (только для админов и представителей) -->
+                {% if user.role != 'translator' %}
                 <div>
                     <label for="assigned" class="block text-sm font-medium text-gray-700 mb-1">Назначение</label>
                     <select name="assigned" id="assigned" 
@@ -69,6 +157,7 @@
                         <option value="unassigned" {% if assigned_filter == "unassigned" %}selected{% endif %}>Неназначенные</option>
                     </select>
                 </div>
+                {% endif %}
             </div>
 
             <div class="flex items-center justify-between">
@@ -81,10 +170,12 @@
                         <i class="fas fa-times mr-2"></i>
                         Сбросить
                     </a>
+                    {% if user.role not in 'translator,corrector' %}
                     <a href="{% url 'translations:sentence_export' %}?{{ request.GET.urlencode }}" class="inline-flex items-center px-4 py-2 border border-green-600 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                         <i class="fas fa-download mr-2"></i>
                         Выгрузить
                     </a>
+                    {% endif %}
                 </div>
 
                 <!-- Сортировка -->
@@ -92,13 +183,20 @@
                     <label for="sort" class="text-sm font-medium text-gray-700">Сортировка:</label>
                     <select name="sort" id="sort" onchange="this.form.submit()" 
                             class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
-                        <option value="document__file" {% if sort_by == "document__file" %}selected{% endif %}>По документу</option>
-                        <option value="sentence_number" {% if sort_by == "sentence_number" %}selected{% endif %}>По номеру предложения</option>
-                        <option value="-sentence_number" {% if sort_by == "-sentence_number" %}selected{% endif %}>По номеру предложения (убыв.)</option>
-                        <option value="status" {% if sort_by == "status" %}selected{% endif %}>По статусу</option>
-                        <option value="-status" {% if sort_by == "-status" %}selected{% endif %}>По статусу (убыв.)</option>
-                        <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>По дате создания</option>
-                        <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>По дате создания (убыв.)</option>
+                        {% if user.role == 'corrector' %}
+                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>По дате создания</option>
+                            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>По дате создания (убыв.)</option>
+                            <option value="status" {% if sort_by == "status" %}selected{% endif %}>По статусу</option>
+                            <option value="-status" {% if sort_by == "-status" %}selected{% endif %}>По статусу (убыв.)</option>
+                        {% else %}
+                            <option value="document__file" {% if sort_by == "document__file" %}selected{% endif %}>По документу</option>
+                            <option value="sentence_number" {% if sort_by == "sentence_number" %}selected{% endif %}>По номеру предложения</option>
+                            <option value="-sentence_number" {% if sort_by == "-sentence_number" %}selected{% endif %}>По номеру предложения (убыв.)</option>
+                            <option value="status" {% if sort_by == "status" %}selected{% endif %}>По статусу</option>
+                            <option value="-status" {% if sort_by == "-status" %}selected{% endif %}>По статусу (убыв.)</option>
+                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>По дате создания</option>
+                            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>По дате создания (убыв.)</option>
+                        {% endif %}
                     </select>
                 </div>
             </div>
@@ -117,13 +215,15 @@
                         Оригинальный текст
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Статус
+                        {% if user.role == 'translator' %}Мой статус{% else %}Статус{% endif %}
                     </th>
+                    {% if user.role not in 'translator,corrector' %}
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Назначено
                     </th>
+                    {% endif %}
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Перевод
+                        {% if user.role == 'translator' %}Мой перевод{% else %}Перевод{% endif %}
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Действия
@@ -134,14 +234,24 @@
                 {% for sentence in page_obj %}
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">
-                            <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="text-primary-600 hover:text-primary-900">
-                                {{ sentence.document.title }}
-                            </a>
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            {{ sentence.document.uploaded_at|date:"d.m.Y H:i" }}
-                        </div>
+                        {% if user.role == 'translator' %}
+                            <div class="text-sm text-gray-500">
+                                {{ sentence.document.uploaded_at|date:"d.m.Y H:i" }}
+                            </div>
+                        {% elif user.role == 'corrector' %}
+                            <div class="text-sm text-gray-500">
+                                {{ sentence.document.uploaded_at|date:"d.m.Y H:i" }}
+                            </div>
+                        {% else %}
+                            <div class="text-sm font-medium text-gray-900">
+                                <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="text-primary-600 hover:text-primary-900">
+                                    {{ sentence.document.title }}
+                                </a>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                {{ sentence.document.uploaded_at|date:"d.m.Y H:i" }}
+                            </div>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ sentence.original_text }}">
@@ -166,6 +276,7 @@
                             </span>
                         {% endif %}
                     </td>
+                    {% if user.role not in 'translator,corrector' %}
                     <td class="px-6 py-4 whitespace-nowrap">
                         {% if sentence.assigned_to %}
                             <div class="text-sm text-gray-900">
@@ -178,9 +289,13 @@
                             <span class="text-sm text-gray-500">Не назначено</span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    {% endif %}
+                    <td class="px-6 py-4">
                         {% if sentence.has_translation %}
-                            <div class="text-sm text-gray-900">
+                            <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ sentence.translation.translated_text }}">
+                                {{ sentence.translation.translated_text|truncatechars:80 }}
+                            </div>
+                            <div class="text-sm text-gray-500 mt-1">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                                     {% if sentence.translation.status == 'approved' %}bg-green-100 text-green-800
                                     {% elif sentence.translation.status == 'rejected' %}bg-red-100 text-red-800
@@ -222,10 +337,26 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="{% if user.role == 'translator' %}5{% elif user.role == 'corrector' %}5{% else %}6{% endif %}" class="px-6 py-12 text-center text-gray-500">
                         <div class="flex flex-col items-center">
                             <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
-                            <p class="text-lg font-medium">Предложения не найдены</p>
+                            <p class="text-lg font-medium">
+                                {% if user.role == 'translator' %}
+                                    {% if status_filter %}
+                                        Предложения с выбранным фильтром не найдены
+                                    {% else %}
+                                        Вам не назначено предложений для перевода
+                                    {% endif %}
+                                {% elif user.role == 'corrector' %}
+                                    {% if status_filter %}
+                                        Предложения с переводами по выбранному фильтру не найдены
+                                    {% else %}
+                                        Нет предложений с переводами для проверки
+                                    {% endif %}
+                                {% else %}
+                                    Предложения не найдены
+                                {% endif %}
+                            </p>
                             <p class="text-sm">Попробуйте изменить параметры поиска или фильтры</p>
                         </div>
                     </td>

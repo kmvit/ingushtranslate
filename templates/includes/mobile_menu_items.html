@@ -40,7 +40,8 @@
     </a>
 {% endif %}
 
-<!-- Документы - доступны всем -->
+<!-- Документы - доступны только админам и представителям -->
+{% if user.role in 'admin,representative' %}
 <a href="{% url 'translations:document_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
     <div class="flex items-center">
         <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
@@ -49,6 +50,7 @@
         <span>Документы</span>
     </div>
 </a>
+{% endif %}
 
 <!-- Предложения - доступны всем -->
 <a href="{% url 'translations:sentence_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
@@ -60,7 +62,8 @@
     </div>
 </a>
 
-<!-- Переводы - доступны всем -->
+<!-- Переводы - доступны только админам и представителям -->
+{% if user.role in 'admin,representative' %}
 <a href="{% url 'translations:translation_list' %}" class="group block text-white hover:text-blue-100 px-4 py-3 rounded-lg text-base font-medium bg-white/5 hover:bg-white/10 transition-all duration-200 border border-white/10 hover:border-white/20">
     <div class="flex items-center">
         <div class="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
@@ -68,4 +71,5 @@
         </div>
         <span>Переводы</span>
     </div>
-</a> 
+</a>
+{% endif %} 

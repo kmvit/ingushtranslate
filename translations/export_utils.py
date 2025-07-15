@@ -1,5 +1,8 @@
 import os
+import shutil
 from typing import Dict, List
+import zipfile
+import tempfile
 
 import docx
 import openpyxl
@@ -186,6 +189,46 @@ def export_document_translations(document: Document, format_type: str) -> str:
         return export_to_xlsx(document, output_path)
     else:
         raise ValueError(f"Неподдерживаемый формат экспорта: {format_type}")
+
+
+def export_document_all_formats(document: Document) -> str:
+    """
+    Экспортирует документ во всех поддерживаемых форматах и упаковывает в ZIP архив
+    """
+    # Создаем временную директорию для файлов
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Генерируем базовое имя файла
+        base_name = f"translation_{document.id}_{document.title.replace(' ', '_')}"
+
+        # Экспортируем во все форматы
+        txt_path = os.path.join(temp_dir, f"{base_name}.txt")
+        docx_path = os.path.join(temp_dir, f"{base_name}.docx")
+        xlsx_path = os.path.join(temp_dir, f"{base_name}.xlsx")
+
+        # Создаем файлы
+        export_to_txt(document, txt_path)
+        export_to_docx(document, docx_path)
+        export_to_xlsx(document, xlsx_path)
+
+        # Создаем ZIP архив
+        zip_path = os.path.join(temp_dir, f"{base_name}_all_formats.zip")
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            # Добавляем файлы в архив
+            zipf.write(txt_path, os.path.basename(txt_path))
+            zipf.write(docx_path, os.path.basename(docx_path))
+            zipf.write(xlsx_path, os.path.basename(xlsx_path))
+
+        # Копируем архив в постоянную директорию
+        export_dir = os.path.join(default_storage.location, "exports")
+        os.makedirs(export_dir, exist_ok=True)
+
+        final_zip_path = os.path.join(export_dir, f"{base_name}_all_formats.zip")
+
+        # Копируем файл
+        shutil.copy2(zip_path, final_zip_path)
+
+        return final_zip_path
 
 
 def get_document_statistics(document: Document) -> Dict:

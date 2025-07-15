@@ -1,6 +1,23 @@
 [
   {
     "model": "users.user",
+    "pk": 1,
+    "fields": {
+      "username": "admin",
+      "first_name": "Администратор",
+      "last_name": "Системы",
+      "email": "admin@ingushtranslate.com",
+      "password": "pbkdf2_sha256$720000$BZ1ndOsLXHOh1Wf4mIpZdx$5crLUZpGZ4QCEjYUDxYXZKFmOTwVsmeou2Xj8q8W7UA=",
+      "role": "admin",
+      "phone": "+7 (928) 000-00-00",
+      "is_staff": true,
+      "is_superuser": true,
+      "is_active": true,
+      "date_joined": "2024-01-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "users.user",
     "pk": 2,
     "fields": {
       "username": "ahmet_translator",

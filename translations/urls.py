@@ -40,6 +40,11 @@ urlpatterns = [
         "translations/pending/", views.pending_translations, name="pending_translations"
     ),
     path(
+        "export/<int:document_id>/all/",
+        views.export_document_all,
+        name="export_document_all",
+    ),
+    path(
         "export/<int:document_id>/<str:format>/",
         views.export_document,
         name="export_document",

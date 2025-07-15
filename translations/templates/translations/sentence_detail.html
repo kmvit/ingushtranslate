@@ -7,15 +7,21 @@
     <!-- Заголовок -->
     <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h1 class="text-2xl font-bold text-gray-900">Предложение №{{ sentence.sentence_number }}</h1>
+            {% if user.role == 'corrector' %}
+                <h1 class="text-2xl font-bold text-gray-900">Просмотр перевода</h1>
+            {% else %}
+                <h1 class="text-2xl font-bold text-gray-900">Предложение №{{ sentence.sentence_number }}</h1>
+            {% endif %}
             <a href="{% url 'translations:sentence_list' %}" class="text-primary-600 hover:text-primary-900 text-sm">← К списку предложений</a>
         </div>
+        {% if user.role != 'corrector' %}
         <div class="px-6 py-4">
             <div class="text-sm text-gray-600">
                 <span class="font-semibold">Документ:</span>
                 <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="text-primary-600 hover:text-primary-900">{{ sentence.document.title }}</a>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Основной контент в двух колонках -->
@@ -65,6 +71,7 @@
                     <div class="border-t border-gray-200 pt-4">
                         <form method="post" class="space-y-3">
                             {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_translator">
                             <div>
                                 <label for="{{ assign_form.assigned_to.id_for_label }}" class="block text-sm font-medium text-gray-700">
                                     Назначить переводчика
@@ -78,6 +85,31 @@
                                 {% if assign_form.assigned_to.errors %}
                                     <div class="mt-1 text-sm text-red-600">
                                         {{ assign_form.assigned_to.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                    
+                    {% if user.role == 'translator' and sentence.assigned_to == user %}
+                    <div class="border-t border-gray-200 pt-4">
+                        <form method="post" class="space-y-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="change_status">
+                            <div>
+                                <label for="{{ status_form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                                    Изменить статус предложения
+                                </label>
+                                <div class="mt-1 flex items-center space-x-2">
+                                    {{ status_form.status }}
+                                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        <i class="fas fa-check mr-1"></i>Обновить статус
+                                    </button>
+                                </div>
+                                {% if status_form.status.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ status_form.status.errors.0 }}
                                     </div>
                                 {% endif %}
                             </div>
@@ -146,12 +178,56 @@
                             <span class="text-sm text-gray-900">{{ translation.corrected_at|date:"d.m.Y H:i" }}</span>
                         </div>
                         {% endif %}
+                        
+                        {% if user.role == 'corrector' and translation.status == 'pending' %}
+                        <div class="border-t border-gray-200 pt-4">
+                            <form method="post" class="space-y-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="review_translation">
+                                <div class="flex space-x-3">
+                                    <button type="submit" name="review_action" value="approve" 
+                                            class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        <i class="fas fa-check mr-2"></i>Одобрить
+                                    </button>
+                                    <button type="submit" name="review_action" value="reject" 
+                                            class="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        <i class="fas fa-times mr-2"></i>Отклонить
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
                     </div>
                 {% else %}
                     <div class="flex flex-col items-center justify-center py-12">
                         <i class="fas fa-language text-4xl mb-4 text-gray-300"></i>
                         <p class="text-lg font-medium text-gray-500">Перевод отсутствует</p>
                         <p class="text-sm text-gray-400">Для этого предложения еще не создан перевод</p>
+                        
+                        {% if user.role == 'translator' and sentence.assigned_to == user %}
+                        <div class="mt-6 w-full">
+                            <form method="post" class="space-y-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="create_translation">
+                                <div>
+                                    <label for="{{ create_translation_form.translated_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Создать перевод
+                                    </label>
+                                    {{ create_translation_form.translated_text }}
+                                    {% if create_translation_form.translated_text.errors %}
+                                        <div class="mt-1 text-sm text-red-600">
+                                            {{ create_translation_form.translated_text.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <i class="fas fa-plus mr-2"></i>Создать перевод
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
@@ -160,9 +236,15 @@
 
     <!-- Кнопка возврата -->
     <div class="mt-6 text-right">
-        <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            <i class="fas fa-arrow-left mr-2"></i>Назад к документу
-        </a>
+        {% if user.role == 'corrector' %}
+            <a href="{% url 'dashboards:corrector_dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-arrow-left mr-2"></i>Назад в кабинет корректора
+            </a>
+        {% elif user.role != 'translator' %}
+            <a href="{% url 'translations:document_detail' document_id=sentence.document.id %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <i class="fas fa-arrow-left mr-2"></i>Назад к документу
+            </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %} 

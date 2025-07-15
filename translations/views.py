@@ -5,16 +5,18 @@ from django.http import HttpResponse
 from django.views.generic import View, ListView, DetailView
 from django.db.models import Q
 from django.core.files.storage import default_storage
+from django.utils import timezone
 import os
 from .models import Document, Sentence, Translation
 from .utils import extract_and_validate_sentences
 from .export_utils import (
     export_document_translations,
+    export_document_all_formats,
     get_document_statistics,
     export_sentences_to_csv,
 )
 from dashboards.mixins import AdminOrRepresentativeMixin
-from .forms import AssignTranslatorForm
+from .forms import AssignTranslatorForm, ChangeSentenceStatusForm, CreateTranslationForm
 
 
 class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
@@ -280,8 +282,8 @@ class DocumentDeleteView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         return redirect("translations:document_list")
 
 
-class SentenceListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
-    """Список всех предложений с фильтрацией"""
+class SentenceListView(LoginRequiredMixin, ListView):
+    """Список предложений с фильтрацией - разные данные для разных ролей"""
 
     model = Sentence
     template_name = "translations/sentence_list.html"
@@ -289,42 +291,141 @@ class SentenceListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
     paginate_by = 25
 
     def get_queryset(self):
+        # Базовый queryset с нужными связями
         queryset = Sentence.objects.select_related(
-            "document", "assigned_to", "translation__translator"
-        ).all()
+            "document",
+            "assigned_to",
+            "translation__translator",
+            "translation__corrector",
+        )
 
-        # Фильтры
+        # Для переводчиков показываем только связанные предложения
+        if self.request.user.role == "translator":
+            queryset = queryset.filter(
+                Q(assigned_to=self.request.user)  # Назначенные переводчику
+                | Q(
+                    translation__translator=self.request.user
+                )  # Переведенные переводчиком
+            ).distinct()
+        # Для корректоров показываем предложения с переводами
+        elif self.request.user.role == "corrector":
+            queryset = queryset.filter(
+                translation__isnull=False
+            )  # Только предложения с переводами
+        # Для админов и представителей показываем все предложения
+        elif self.request.user.role in ["admin", "representative"]:
+            queryset = queryset.all()
+        else:
+            # Для других ролей показываем пустой список
+            queryset = queryset.none()
+
+        # Фильтры для переводчиков
+        if self.request.user.role == "translator":
+            status_filter = self.request.GET.get("status", "")
+            if status_filter:
+                if status_filter == "assigned":
+                    # Только назначенные, но без перевода
+                    queryset = queryset.filter(
+                        assigned_to=self.request.user, translation__isnull=True
+                    )
+                elif status_filter == "translated":
+                    # С переводами
+                    queryset = queryset.filter(
+                        translation__translator=self.request.user
+                    )
+                elif status_filter == "approved":
+                    # Утвержденные переводы
+                    queryset = queryset.filter(
+                        translation__translator=self.request.user,
+                        translation__status="approved",
+                    )
+                elif status_filter == "rejected":
+                    # Отклоненные переводы
+                    queryset = queryset.filter(
+                        translation__translator=self.request.user,
+                        translation__status="rejected",
+                    )
+                elif status_filter == "pending":
+                    # Ожидающие проверки переводы
+                    queryset = queryset.filter(
+                        translation__translator=self.request.user,
+                        translation__status="pending",
+                    )
+                elif status_filter == "0":
+                    queryset = queryset.filter(status=0)
+                elif status_filter == "1":
+                    queryset = queryset.filter(status=1)
+                elif status_filter == "2":
+                    queryset = queryset.filter(status=2)
+
+        # Фильтры для корректоров
+        elif self.request.user.role == "corrector":
+            status_filter = self.request.GET.get("status", "")
+            if status_filter:
+                if status_filter == "pending":
+                    # Ожидающие проверки переводы
+                    queryset = queryset.filter(translation__status="pending")
+                elif status_filter == "approved":
+                    # Утвержденные переводы
+                    queryset = queryset.filter(translation__status="approved")
+                elif status_filter == "rejected":
+                    # Отклоненные переводы
+                    queryset = queryset.filter(translation__status="rejected")
+        # Фильтры для админов и представителей
+        else:
+            status_filter = self.request.GET.get("status", "")
+            if status_filter:
+                if status_filter == "0":
+                    queryset = queryset.filter(status=0)
+                elif status_filter == "1":
+                    queryset = queryset.filter(status=1)
+                elif status_filter == "2":
+                    queryset = queryset.filter(status=2)
+
+            assigned_filter = self.request.GET.get("assigned", "")
+            if assigned_filter == "assigned":
+                queryset = queryset.filter(assigned_to__isnull=False)
+            elif assigned_filter == "unassigned":
+                queryset = queryset.filter(assigned_to__isnull=True)
+
+        # Общие фильтры
         document_filter = self.request.GET.get("document", "")
         if document_filter:
             queryset = queryset.filter(document_id=document_filter)
 
-        status_filter = self.request.GET.get("status", "")
-        if status_filter:
-            if status_filter == "0":
-                queryset = queryset.filter(status=0)
-            elif status_filter == "1":
-                queryset = queryset.filter(status=1)
-            elif status_filter == "2":
-                queryset = queryset.filter(status=2)
-
-        assigned_filter = self.request.GET.get("assigned", "")
-        if assigned_filter == "assigned":
-            queryset = queryset.filter(assigned_to__isnull=False)
-        elif assigned_filter == "unassigned":
-            queryset = queryset.filter(assigned_to__isnull=True)
-
         # Поиск
         search_query = self.request.GET.get("search", "")
         if search_query:
-            queryset = queryset.filter(
-                Q(original_text__icontains=search_query)
-                | Q(document__file__icontains=search_query)
-                | Q(assigned_to__first_name__icontains=search_query)
-                | Q(assigned_to__last_name__icontains=search_query)
-            )
+            if self.request.user.role == "translator":
+                queryset = queryset.filter(
+                    Q(original_text__icontains=search_query)
+                    | Q(translation__translated_text__icontains=search_query)
+                    | Q(document__file__icontains=search_query)
+                )
+            elif self.request.user.role == "corrector":
+                queryset = queryset.filter(
+                    Q(original_text__icontains=search_query)
+                    | Q(translation__translated_text__icontains=search_query)
+                    | Q(translation__translator__first_name__icontains=search_query)
+                    | Q(translation__translator__last_name__icontains=search_query)
+                )
+            else:
+                queryset = queryset.filter(
+                    Q(original_text__icontains=search_query)
+                    | Q(document__file__icontains=search_query)
+                    | Q(assigned_to__first_name__icontains=search_query)
+                    | Q(assigned_to__last_name__icontains=search_query)
+                )
 
         # Сортировка
-        sort_by = self.request.GET.get("sort", "document__file")
+        if self.request.user.role == "translator":
+            default_sort = "-created_at"
+        elif self.request.user.role == "corrector":
+            default_sort = "-created_at"
+        else:
+            default_sort = "document__file"
+
+        sort_by = self.request.GET.get("sort", default_sort)
         if sort_by in [
             "sentence_number",
             "-sentence_number",
@@ -341,12 +442,55 @@ class SentenceListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["documents"] = Document.objects.all()
+
+        # Статистика для переводчиков
+        if self.request.user.role == "translator":
+            user = self.request.user
+            context["stats"] = {
+                "assigned": Sentence.objects.filter(
+                    assigned_to=user, translation__isnull=True
+                ).count(),
+                "translated": Translation.objects.filter(translator=user).count(),
+                "approved": Translation.objects.filter(
+                    translator=user, status="approved"
+                ).count(),
+                "rejected": Translation.objects.filter(
+                    translator=user, status="rejected"
+                ).count(),
+                "pending": Translation.objects.filter(
+                    translator=user, status="pending"
+                ).count(),
+            }
+            context["documents"] = Document.objects.filter(
+                sentences__assigned_to=user
+            ).distinct()
+        # Статистика для корректоров
+        elif self.request.user.role == "corrector":
+            context["stats"] = {
+                "total_with_translations": Sentence.objects.filter(
+                    translation__isnull=False
+                ).count(),
+                "pending": Translation.objects.filter(status="pending").count(),
+                "approved": Translation.objects.filter(status="approved").count(),
+                "rejected": Translation.objects.filter(status="rejected").count(),
+            }
+            context["documents"] = Document.objects.filter(
+                sentences__translation__isnull=False
+            ).distinct()
+        else:
+            context["documents"] = Document.objects.all()
+
         context["document_filter"] = self.request.GET.get("document", "")
         context["status_filter"] = self.request.GET.get("status", "")
         context["assigned_filter"] = self.request.GET.get("assigned", "")
         context["search_query"] = self.request.GET.get("search", "")
-        context["sort_by"] = self.request.GET.get("sort", "document__file")
+        if self.request.user.role == "translator":
+            default_sort = "-created_at"
+        elif self.request.user.role == "corrector":
+            default_sort = "-created_at"
+        else:
+            default_sort = "document__file"
+        context["sort_by"] = self.request.GET.get("sort", default_sort)
         return context
 
 
@@ -395,43 +539,152 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
         if self.request.user.role in ["admin", "representative"]:
             context["assign_form"] = AssignTranslatorForm(instance=self.object)
 
+        # Добавляем форму изменения статуса для переводчиков
+        if self.request.user.role == "translator":
+            context["status_form"] = ChangeSentenceStatusForm(instance=self.object)
+            # Добавляем форму создания перевода, если перевод еще не существует
+            if not hasattr(self.object, "translation"):
+                context["create_translation_form"] = CreateTranslationForm()
+
         return context
 
     def post(self, request, sentence_id):
-        """Обработка назначения переводчика"""
+        """Обработка назначения переводчика и изменения статуса"""
         sentence = self.get_object()
+        action = request.POST.get("action", "")
 
-        # Проверяем права доступа
-        if request.user.role not in ["admin", "representative"]:
-            messages.error(request, "У вас нет прав для назначения переводчиков.")
-            return redirect("translations:sentence_detail", sentence_id=sentence_id)
+        # Обработка назначения переводчика (для админов и представителей)
+        if action == "assign_translator":
+            if request.user.role not in ["admin", "representative"]:
+                messages.error(request, "У вас нет прав для назначения переводчиков.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
 
-        form = AssignTranslatorForm(request.POST, instance=sentence)
+            form = AssignTranslatorForm(request.POST, instance=sentence)
 
-        if form.is_valid():
-            old_assigned_to = sentence.assigned_to
-            sentence = form.save()
+            if form.is_valid():
+                old_assigned_to = sentence.assigned_to
+                sentence = form.save()
 
-            if sentence.assigned_to:
-                if old_assigned_to != sentence.assigned_to:
-                    messages.success(
-                        request,
-                        f"Переводчик {sentence.assigned_to.get_full_name()} назначен для предложения №{sentence.sentence_number}",
-                    )
+                if sentence.assigned_to:
+                    if old_assigned_to != sentence.assigned_to:
+                        messages.success(
+                            request,
+                            f"Переводчик {sentence.assigned_to.get_full_name()} назначен для предложения №{sentence.sentence_number}",
+                        )
+                    else:
+                        messages.info(
+                            request, "Переводчик уже был назначен для этого предложения"
+                        )
                 else:
-                    messages.info(
-                        request, "Переводчик уже был назначен для этого предложения"
-                    )
+                    if old_assigned_to:
+                        messages.success(
+                            request,
+                            f"Назначение переводчика снято с предложения №{sentence.sentence_number}",
+                        )
+                    else:
+                        messages.info(
+                            request, "Предложение не было назначено переводчику"
+                        )
             else:
-                if old_assigned_to:
+                messages.error(request, "Ошибка при назначении переводчика")
+
+        # Обработка изменения статуса (для переводчиков)
+        elif action == "change_status":
+            if request.user.role != "translator":
+                messages.error(
+                    request, "У вас нет прав для изменения статуса предложения."
+                )
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что переводчик назначен на это предложение
+            if sentence.assigned_to != request.user:
+                messages.error(request, "Вы не назначены на это предложение.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            form = ChangeSentenceStatusForm(request.POST, instance=sentence)
+
+            if form.is_valid():
+                old_status = sentence.status
+                sentence = form.save()
+
+                if sentence.status != old_status:
+                    status_display = sentence.get_status_display()
                     messages.success(
                         request,
-                        f"Назначение переводчика снято с предложения №{sentence.sentence_number}",
+                        f"Статус предложения №{sentence.sentence_number} изменен на: {status_display}",
                     )
                 else:
-                    messages.info(request, "Предложение не было назначено переводчику")
-        else:
-            messages.error(request, "Ошибка при назначении переводчика")
+                    messages.info(request, "Статус предложения не изменился")
+            else:
+                messages.error(request, "Ошибка при изменении статуса предложения")
+
+        # Обработка создания перевода (для переводчиков)
+        elif action == "create_translation":
+            if request.user.role != "translator":
+                messages.error(request, "У вас нет прав для создания перевода.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что переводчик назначен на это предложение
+            if sentence.assigned_to != request.user:
+                messages.error(request, "Вы не назначены на это предложение.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что перевод еще не существует
+            if hasattr(sentence, "translation"):
+                messages.error(request, "Перевод для этого предложения уже существует.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            form = CreateTranslationForm(request.POST)
+
+            if form.is_valid():
+                translation = form.save(commit=False)
+                translation.sentence = sentence
+                translation.translator = request.user
+                translation.save()
+
+                messages.success(
+                    request,
+                    f"Перевод для предложения №{sentence.sentence_number} успешно создан.",
+                )
+            else:
+                messages.error(
+                    request, "Ошибка при создании перевода. Проверьте введенные данные."
+                )
+
+        # Обработка проверки перевода (для корректоров)
+        elif action == "review_translation":
+            if request.user.role != "corrector":
+                messages.error(request, "У вас нет прав для проверки переводов.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что перевод существует
+            if not hasattr(sentence, "translation"):
+                messages.error(request, "Перевод для этого предложения не найден.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            translation = sentence.translation
+            review_action = request.POST.get("review_action", "")
+
+            if review_action == "approve":
+                translation.status = "approved"
+                translation.corrector = request.user
+                translation.corrected_at = timezone.now()
+                translation.save()
+                messages.success(
+                    request,
+                    f"Перевод для предложения №{sentence.sentence_number} одобрен.",
+                )
+            elif review_action == "reject":
+                translation.status = "rejected"
+                translation.corrector = request.user
+                translation.corrected_at = timezone.now()
+                translation.save()
+                messages.success(
+                    request,
+                    f"Перевод для предложения №{sentence.sentence_number} отклонен.",
+                )
+            else:
+                messages.error(request, "Неверное действие проверки.")
 
         return redirect("translations:sentence_detail", sentence_id=sentence_id)
 
@@ -618,6 +871,32 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
             return redirect("translations:document_detail", document_id=document_id)
 
 
+class ExportDocumentAllView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
+    """Экспорт документа во всех форматах в ZIP архиве"""
+
+    def get(self, request, document_id):
+        document = get_object_or_404(Document, id=document_id)
+
+        try:
+            file_path = export_document_all_formats(document)
+
+            # Читаем файл и отправляем как ответ
+            with open(file_path, "rb") as f:
+                response = HttpResponse(f.read(), content_type="application/zip")
+                response["Content-Disposition"] = (
+                    f'attachment; filename="{os.path.basename(file_path)}"'
+                )
+
+            # Удаляем временный файл
+            os.remove(file_path)
+
+            return response
+
+        except Exception as e:
+            messages.error(request, f"Ошибка при экспорте документа: {str(e)}")
+            return redirect("translations:document_detail", document_id=document_id)
+
+
 def export_sentences(request):
     """Экспорт предложений в CSV с учётом фильтров"""
     queryset = Sentence.objects.select_related(
@@ -672,3 +951,4 @@ approved_translations = ApprovedTranslationsView.as_view()
 rejected_translations = RejectedTranslationsView.as_view()
 pending_translations = PendingTranslationsView.as_view()
 export_document = ExportDocumentView.as_view()
+export_document_all = ExportDocumentAllView.as_view()

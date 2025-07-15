@@ -35,6 +35,11 @@
                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">DOCX файл</a>
                             <a href="{% url 'translations:export_document' document_id=document.id format='xlsx' %}" 
                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">XLSX файл</a>
+                            <div class="border-t border-gray-200"></div>
+                            <a href="{% url 'translations:export_document_all' document_id=document.id %}" 
+                               class="block px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium">
+                               <i class="fas fa-archive mr-2"></i>Все форматы (ZIP)
+                            </a>
                         </div>
                     </div>
                 </div>

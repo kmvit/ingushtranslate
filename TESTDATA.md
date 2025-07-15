@@ -10,7 +10,7 @@ python manage.py loaddata fixtures/initial_data.json
 
 ## Что будет создано
 
-### 👥 Пользователи (6 человек):
+### 👥 Пользователи (7 человек):
 
 1. **Администратор**
    - Логин: `admin`
