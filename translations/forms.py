@@ -34,6 +34,38 @@ class AssignTranslatorForm(forms.ModelForm):
         self.fields["assigned_to"].empty_label = "Выберите переводчика..."
 
 
+class AssignCorrectorForm(forms.Form):
+    """Форма для назначения корректора переводу"""
+    
+    corrector = forms.ModelChoiceField(
+        queryset=User.objects.filter(role="corrector").order_by("first_name", "last_name"),
+        empty_label="Выберите корректора...",
+        required=False,
+        label="Корректор"
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Получаем только пользователей с ролью корректора
+        correctors = User.objects.filter(role="corrector").order_by(
+            "first_name", "last_name"
+        )
+
+        # Создаем выбор с пустым вариантом
+        choices = [("", "Выберите корректора...")]
+        for corrector in correctors:
+            display_name = corrector.get_full_name() or corrector.username
+            choices.append((corrector.id, display_name))
+
+        self.fields["corrector"].choices = choices
+        self.fields["corrector"].widget.attrs.update(
+            {
+                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+            }
+        )
+
+
 class ChangeSentenceStatusForm(forms.ModelForm):
     """Форма для изменения статуса предложения переводчиком"""
 

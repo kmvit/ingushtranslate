@@ -16,7 +16,7 @@ from .export_utils import (
     export_sentences_to_csv,
 )
 from dashboards.mixins import AdminOrRepresentativeMixin
-from .forms import AssignTranslatorForm, ChangeSentenceStatusForm, CreateTranslationForm
+from .forms import AssignTranslatorForm, AssignCorrectorForm, ChangeSentenceStatusForm, CreateTranslationForm
 
 
 class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
@@ -539,6 +539,10 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
         if self.request.user.role in ["admin", "representative"]:
             context["assign_form"] = AssignTranslatorForm(instance=self.object)
 
+        # Добавляем форму назначения корректора для администраторов и представителей
+        if self.request.user.role in ["admin", "representative"]:
+            context["assign_corrector_form"] = AssignCorrectorForm()
+
         # Добавляем форму изменения статуса для переводчиков
         if self.request.user.role == "translator":
             context["status_form"] = ChangeSentenceStatusForm(instance=self.object)
@@ -587,6 +591,55 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                         )
             else:
                 messages.error(request, "Ошибка при назначении переводчика")
+
+        # Обработка назначения корректора (для админов и представителей)
+        elif action == "assign_corrector":
+            if request.user.role not in ["admin", "representative"]:
+                messages.error(request, "У вас нет прав для назначения корректоров.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что перевод существует
+            if not hasattr(sentence, "translation"):
+                messages.error(request, "Перевод для этого предложения не найден.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            # Проверяем, что перевод не утвержден
+            if sentence.translation.status == "approved":
+                messages.error(request, "Нельзя назначить корректора для утвержденного перевода.")
+                return redirect("translations:sentence_detail", sentence_id=sentence_id)
+
+            form = AssignCorrectorForm(request.POST)
+
+            if form.is_valid():
+                translation = sentence.translation
+                old_corrector = translation.corrector
+                new_corrector = form.cleaned_data.get("corrector")
+
+                translation.corrector = new_corrector
+                translation.save()
+
+                if new_corrector:
+                    if old_corrector != new_corrector:
+                        messages.success(
+                            request,
+                            f"Корректор {new_corrector.get_full_name()} назначен для перевода предложения №{sentence.sentence_number}",
+                        )
+                    else:
+                        messages.info(
+                            request, "Корректор уже был назначен для этого перевода"
+                        )
+                else:
+                    if old_corrector:
+                        messages.success(
+                            request,
+                            f"Назначение корректора снято с перевода предложения №{sentence.sentence_number}",
+                        )
+                    else:
+                        messages.info(
+                            request, "Перевод не был назначен корректору"
+                        )
+            else:
+                messages.error(request, "Ошибка при назначении корректора")
 
         # Обработка изменения статуса (для переводчиков)
         elif action == "change_status":
