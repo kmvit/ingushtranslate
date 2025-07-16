@@ -9,7 +9,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Кабинет корректора</h1>
-                <p class="text-gray-600">Добро пожаловать, {{ user.get_full_name }}! Здесь вы можете просматривать и проверять все переведенные предложения.</p>
+                <p class="text-gray-600">Добро пожаловать, {{ user.get_full_name }}! Здесь вы можете просматривать и проверять переводы, назначенные вам.</p>
             </div>
             <div class="text-right">
                 <p class="text-sm text-gray-500">Роль: {{ user.get_role_display }}</p>
@@ -60,7 +60,7 @@
     <!-- Переводы на проверке -->
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Все переведенные предложения</h2>
+            <h2 class="text-lg font-medium text-gray-900">Назначенные мне переводы</h2>
         </div>
         <div class="p-6">
             {% if in_review_translations %}
@@ -96,7 +96,7 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="text-gray-500 text-center py-8">Нет переведенных предложений</p>
+                <p class="text-gray-500 text-center py-8">Вам не назначены переводы для проверки</p>
             {% endif %}
         </div>
     </div>

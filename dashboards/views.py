@@ -333,17 +333,24 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Получаем все переводы, которые имеют перевод (не пустой translated_text)
-        # Корректор должен видеть все переведенные предложения
+        # Получаем переводы, назначенные этому корректору или не назначенные никому
+        # Корректор видит только переводы, где он указан как corrector или где corrector не указан
         context["in_review_translations"] = (
-            Translation.objects.filter(translated_text__isnull=False)
+            Translation.objects.filter(
+                translated_text__isnull=False
+            )
             .exclude(translated_text="")
+            .filter(
+                Q(corrector=self.request.user) | Q(corrector__isnull=True)
+            )
             .select_related("sentence__document", "translator")
             .order_by("-translated_at")
         )
 
-        # Получаем переводы, которые нужно проверить (статус pending)
-        context["pending_corrections"] = Translation.objects.filter(status="pending")
+        # Получаем переводы, которые нужно проверить (статус pending) и назначены этому корректору
+        context["pending_corrections"] = Translation.objects.filter(
+            Q(status="pending") & (Q(corrector=self.request.user) | Q(corrector__isnull=True))
+        )
 
         # Получаем переводы, которые уже проверены этим корректором
         completed_corrections = Translation.objects.filter(
@@ -364,7 +371,7 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         if not context["in_review_translations"].exists():
             messages.info(
                 self.request,
-                "В данный момент нет переводов для проверки. Ожидайте новых переводов от переводчиков.",
+                "Вам не назначены переводы для проверки. Ожидайте назначения от администратора.",
             )
 
         return context
