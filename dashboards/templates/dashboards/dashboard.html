@@ -81,7 +81,7 @@
         </a>
 
         <!-- Переводы -->
-        <a href="{% url 'translations:translation_list' %}" class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-200">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-5">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -97,7 +97,7 @@
                     </div>
                 </div>
             </div>
-        </a>
+        </div>
     </div>
 
     <!-- Статистика переводов -->
@@ -153,72 +153,6 @@
         </div>
     </div>
 
-    <!-- Последние активности -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Последние документы -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Последние документы</h3>
-                <a href="{% url 'translations:document_list' %}" class="text-sm text-primary-600 hover:text-primary-500">
-                    Посмотреть все
-                </a>
-            </div>
-            <div class="space-y-4">
-                {% for document in recent_documents %}
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900 truncate">{{ document.title }}</p>
-                        <p class="text-sm text-gray-500">{{ document.uploaded_by.get_full_name }} • {{ document.uploaded_at|date:"d.m.Y H:i" }}</p>
-                    </div>
-                    <div class="ml-4 flex-shrink-0">
-                        <a href="{% url 'translations:document_detail' document.id %}" class="text-primary-600 hover:text-primary-500">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </div>
-                </div>
-                {% empty %}
-                <p class="text-sm text-gray-500 text-center py-4">Нет загруженных документов</p>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- Последние переводы -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Последние переводы</h3>
-                <a href="{% url 'translations:translation_list' %}" class="text-sm text-primary-600 hover:text-primary-500">
-                    Посмотреть все
-                </a>
-            </div>
-            <div class="space-y-4">
-                {% for translation in recent_translations %}
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ translation.translator.get_full_name }} • {{ translation.translated_at|date:"d.m.Y H:i" }}</p>
-
-                    </div>
-                    <div class="ml-4 flex-shrink-0 flex items-center space-x-2">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            {% if translation.status == 'approved' %}bg-green-100 text-green-800
-                            {% elif translation.status == 'rejected' %}bg-red-100 text-red-800
-                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                            {% if translation.status == 'approved' %}Утверждено
-                            {% elif translation.status == 'rejected' %}Отклонено
-                            {% else %}На проверке{% endif %}
-                        </span>
-                        <a href="{% url 'translations:sentence_detail' translation.sentence.id %}" 
-                           class="text-primary-600 hover:text-primary-500" 
-                           title="Просмотреть перевод">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </div>
-                </div>
-                {% empty %}
-                <p class="text-sm text-gray-500 text-center py-4">Нет выполненных переводов</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
 
     <!-- Быстрые действия -->
     <div class="bg-white shadow rounded-lg p-6">

@@ -33,10 +33,6 @@
                     <i class="fas fa-file-alt mr-2"></i>
                     Документы
                 </a>
-                <a href="{% url 'translations:translation_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                    <i class="fas fa-language mr-2"></i>
-                    Переводы
-                </a>
             </div>
             {% endif %}
         </div>
@@ -55,16 +51,16 @@
                 <div class="text-sm text-gray-600">Переведено</div>
             </div>
             <div class="text-center">
+                <div class="text-2xl font-bold text-orange-600">{{ stats.pending }}</div>
+                <div class="text-sm text-gray-600">На проверке</div>
+            </div>
+            <div class="text-center">
                 <div class="text-2xl font-bold text-green-600">{{ stats.approved }}</div>
                 <div class="text-sm text-gray-600">Утверждено</div>
             </div>
             <div class="text-center">
                 <div class="text-2xl font-bold text-red-600">{{ stats.rejected }}</div>
                 <div class="text-sm text-gray-600">Отклонено</div>
-            </div>
-            <div class="text-center">
-                <div class="text-2xl font-bold text-orange-600">{{ stats.pending }}</div>
-                <div class="text-sm text-gray-600">На проверке</div>
             </div>
         </div>
     </div>
@@ -170,12 +166,6 @@
                         <i class="fas fa-times mr-2"></i>
                         Сбросить
                     </a>
-                    {% if user.role not in 'translator,corrector' %}
-                    <a href="{% url 'translations:sentence_export' %}?{{ request.GET.urlencode }}" class="inline-flex items-center px-4 py-2 border border-green-600 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                        <i class="fas fa-download mr-2"></i>
-                        Выгрузить
-                    </a>
-                    {% endif %}
                 </div>
 
                 <!-- Сортировка -->

@@ -19,7 +19,7 @@
     </div>
 
     <!-- Статистика -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div class="bg-white shadow rounded-lg p-6">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -64,6 +64,18 @@
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Завершено</p>
                     <p class="text-2xl font-semibold text-gray-900">{{ total_completed }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-times text-red-600 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Отклонено</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ total_rejected }}</p>
                 </div>
             </div>
         </div>

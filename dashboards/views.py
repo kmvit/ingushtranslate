@@ -9,6 +9,9 @@ from .mixins import AdminOrRepresentativeMixin, TranslatorOnlyMixin, CorrectorOn
 from .forms import UserForm
 
 
+
+
+
 class HomeView(View):
     """Главная страница - перенаправляет в соответствующий кабинет или на страницу входа"""
 
@@ -120,6 +123,171 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
     context_object_name = "user_obj"
     pk_url_kwarg = "user_id"
 
+    def get_user_statistics(self, user_obj: User) -> dict:
+        """
+        Возвращает статистику по пользователю (слова, символы, предложения)
+        """
+        stats = {}
+        
+        if user_obj.role == 'translator':
+            # Получаем предложения, назначенные переводчику
+            assigned_sentences = Sentence.objects.filter(assigned_to=user_obj)
+            user_translations = Translation.objects.filter(translator=user_obj)
+            
+            # Статистика по оригинальным текстам (назначенные предложения)
+            total_words = 0
+            total_characters = 0
+            total_characters_without_spaces = 0
+            
+            for sentence in assigned_sentences:
+                # Подсчет слов (разделение по пробелам)
+                words = sentence.original_text.split()
+                total_words += len(words)
+                
+                # Подсчет символов с пробелами
+                total_characters += len(sentence.original_text)
+                
+                # Подсчет символов без пробелов
+                total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
+            
+            # Статистика по переводам
+            total_translated_words = 0
+            total_translated_characters = 0
+            total_translated_characters_without_spaces = 0
+            
+            for translation in user_translations:
+                if translation.translated_text:
+                    # Подсчет слов в переводе
+                    translated_words = translation.translated_text.split()
+                    total_translated_words += len(translated_words)
+                    
+                    # Подсчет символов в переводе
+                    total_translated_characters += len(translation.translated_text)
+                    
+                    # Подсчет символов без пробелов в переводе
+                    total_translated_characters_without_spaces += len(
+                        translation.translated_text.replace(" ", "")
+                    )
+            
+            stats = {
+                "total_sentences": assigned_sentences.count(),
+                "translated_sentences": user_translations.count(),
+                "total_words": total_words,
+                "total_characters": total_characters,
+                "total_characters_without_spaces": total_characters_without_spaces,
+                "total_translated_words": total_translated_words,
+                "total_translated_characters": total_translated_characters,
+                "total_translated_characters_without_spaces": total_translated_characters_without_spaces,
+            }
+            
+        elif user_obj.role == 'corrector':
+            # Получаем переводы, проверенные корректором
+            user_corrections = Translation.objects.filter(corrector=user_obj)
+            
+            # Статистика по оригинальным текстам (предложения с проверенными переводами)
+            total_words = 0
+            total_characters = 0
+            total_characters_without_spaces = 0
+            
+            for correction in user_corrections:
+                sentence = correction.sentence
+                # Подсчет слов (разделение по пробелам)
+                words = sentence.original_text.split()
+                total_words += len(words)
+                
+                # Подсчет символов с пробелами
+                total_characters += len(sentence.original_text)
+                
+                # Подсчет символов без пробелов
+                total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
+            
+            # Статистика по переводам
+            total_translated_words = 0
+            total_translated_characters = 0
+            total_translated_characters_without_spaces = 0
+            
+            for correction in user_corrections:
+                if correction.translated_text:
+                    # Подсчет слов в переводе
+                    translated_words = correction.translated_text.split()
+                    total_translated_words += len(translated_words)
+                    
+                    # Подсчет символов в переводе
+                    total_translated_characters += len(correction.translated_text)
+                    
+                    # Подсчет символов без пробелов в переводе
+                    total_translated_characters_without_spaces += len(
+                        correction.translated_text.replace(" ", "")
+                    )
+            
+            stats = {
+                "total_sentences": user_corrections.count(),
+                "translated_sentences": user_corrections.count(),
+                "total_words": total_words,
+                "total_characters": total_characters,
+                "total_characters_without_spaces": total_characters_without_spaces,
+                "total_translated_words": total_translated_words,
+                "total_translated_characters": total_translated_characters,
+                "total_translated_characters_without_spaces": total_translated_characters_without_spaces,
+            }
+            
+        elif user_obj.role in ['admin', 'representative']:
+            # Получаем документы, загруженные пользователем
+            user_documents = Document.objects.filter(uploaded_by=user_obj)
+            
+            # Статистика по всем предложениям в загруженных документах
+            total_words = 0
+            total_characters = 0
+            total_characters_without_spaces = 0
+            
+            for document in user_documents:
+                for sentence in document.sentences.all():
+                    # Подсчет слов (разделение по пробелам)
+                    words = sentence.original_text.split()
+                    total_words += len(words)
+                    
+                    # Подсчет символов с пробелами
+                    total_characters += len(sentence.original_text)
+                    
+                    # Подсчет символов без пробелов
+                    total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
+            
+            # Статистика по переводам в загруженных документах
+            total_translated_words = 0
+            total_translated_characters = 0
+            total_translated_characters_without_spaces = 0
+            
+            for document in user_documents:
+                for sentence in document.sentences.filter(translation__isnull=False):
+                    if sentence.translation and sentence.translation.translated_text:
+                        # Подсчет слов в переводе
+                        translated_words = sentence.translation.translated_text.split()
+                        total_translated_words += len(translated_words)
+                        
+                        # Подсчет символов в переводе
+                        total_translated_characters += len(sentence.translation.translated_text)
+                        
+                        # Подсчет символов без пробелов в переводе
+                        total_translated_characters_without_spaces += len(
+                            sentence.translation.translated_text.replace(" ", "")
+                        )
+            
+            total_sentences = sum(doc.sentences.count() for doc in user_documents)
+            translated_sentences = sum(doc.sentences.filter(translation__isnull=False).count() for doc in user_documents)
+            
+            stats = {
+                "total_sentences": total_sentences,
+                "translated_sentences": translated_sentences,
+                "total_words": total_words,
+                "total_characters": total_characters,
+                "total_characters_without_spaces": total_characters_without_spaces,
+                "total_translated_words": total_translated_words,
+                "total_translated_characters": total_translated_characters,
+                "total_translated_characters_without_spaces": total_translated_characters_without_spaces,
+            }
+        
+        return stats
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user_obj = self.object
@@ -152,6 +320,61 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
             context["approved_percentage"] = 0
             context["rejected_percentage"] = 0
             context["pending_percentage"] = 0
+
+        # Инициализируем переменные по умолчанию
+        context["total_assigned"] = 0
+        context["pending_sentences"] = 0
+        context["in_progress_sentences"] = 0
+        context["translated_sentences"] = 0
+        context["completed_sentences"] = 0
+        context["total_completed"] = 0
+        context["total_translated"] = 0
+        context["total_rejected"] = 0
+        context["total_reviewed"] = 0
+        context["pending_corrections"] = 0
+        context["completed_corrections"] = Translation.objects.none()
+
+        # Дополнительная статистика для переводчиков
+        if user_obj.role == 'translator':
+            assigned_sentences = Sentence.objects.filter(assigned_to=user_obj)
+            context["total_assigned"] = assigned_sentences.count()
+            context["pending_sentences"] = assigned_sentences.filter(status=0).count()
+            context["in_progress_sentences"] = assigned_sentences.filter(status=0).count()
+            context["translated_sentences"] = assigned_sentences.filter(status=1).count()
+            context["completed_sentences"] = assigned_sentences.filter(status=2).count()
+            context["total_completed"] = context["completed_sentences"]
+            context["total_translated"] = context["translated_sentences"]
+            context["total_rejected"] = user_translations.filter(status="rejected").count()
+
+        # Дополнительная статистика для корректоров
+        if user_obj.role == 'corrector':
+            # Переводы, назначенные этому корректору или не назначенные никому
+            in_review_translations = Translation.objects.filter(
+                translated_text__isnull=False
+            ).exclude(translated_text="").filter(
+                Q(corrector=user_obj) | Q(corrector__isnull=True)
+            )
+            
+            # Переводы, которые нужно проверить (статус pending) и назначены этому корректору
+            pending_corrections = Translation.objects.filter(
+                Q(status="pending") & (Q(corrector=user_obj) | Q(corrector__isnull=True))
+            )
+            
+            # Переводы, которые уже проверены этим корректором
+            completed_corrections = Translation.objects.filter(
+                corrector=user_obj, status__in=["approved", "rejected"]
+            )
+            
+            context["total_reviewed"] = completed_corrections.count()
+            context["pending_corrections"] = pending_corrections.count()
+            context["completed_corrections"] = completed_corrections
+            
+            # Обновляем статистику по статусам для корректора
+            context["approved_count"] = completed_corrections.filter(status="approved").count()
+            context["rejected_count"] = completed_corrections.filter(status="rejected").count()
+
+        # Добавляем статистику по словам и символам
+        context["user_stats"] = self.get_user_statistics(user_obj)
 
         return context
 
@@ -314,6 +537,9 @@ class TranslatorDashboardView(LoginRequiredMixin, TranslatorOnlyMixin, TemplateV
         context["total_assigned"] = assigned_sentences.count()
         context["total_completed"] = context["completed_sentences"].count()
         context["total_translated"] = context["translated_sentences"].count()
+        
+        # Статистика по статусам переводов
+        context["total_rejected"] = user_translations.filter(status="rejected").count()
 
         # Если нет назначенных предложений, показываем сообщение
         if not assigned_sentences.exists():
@@ -366,6 +592,7 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         context["rejected_count"] = completed_corrections.filter(
             status="rejected"
         ).count()
+        context["pending_count"] = context["pending_corrections"].count()
 
         # Если нет переводов для проверки, показываем сообщение
         if not context["in_review_translations"].exists():

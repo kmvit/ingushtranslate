@@ -92,30 +92,7 @@
                     </div>
                     {% endif %}
                     
-                    {% if user.role == 'translator' and sentence.assigned_to == user and sentence.status != 2 %}
-                    <div class="border-t border-gray-200 pt-4">
-                        <form method="post" class="space-y-3">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="change_status">
-                            <div>
-                                <label for="{{ status_form.status.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                                    Изменить статус предложения
-                                </label>
-                                <div class="mt-1 flex items-center space-x-2">
-                                    {{ status_form.status }}
-                                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                        <i class="fas fa-check mr-1"></i>Обновить статус
-                                    </button>
-                                </div>
-                                {% if status_form.status.errors %}
-                                    <div class="mt-1 text-sm text-red-600">
-                                        {{ status_form.status.errors.0 }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </form>
-                    </div>
-                    {% endif %}
+
                     
                     <div class="flex justify-between items-center">
                         <span class="text-sm font-medium text-gray-700">Дата создания:</span>
@@ -138,9 +115,56 @@
             <div class="px-6 py-4 space-y-4">
                 {% if translation %}
                     <div>
-                        <div class="p-4 bg-green-50 rounded-lg border text-gray-900 min-h-[100px]">
-                            {{ translation.translated_text }}
-                        </div>
+                        {% if user.role == 'translator' and sentence.assigned_to == user and sentence.status != 2 %}
+                            <!-- Форма редактирования перевода для переводчика -->
+                            <form method="post" class="space-y-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="edit_translation">
+                                <div>
+                                    <label for="{{ edit_translation_form.translated_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Редактировать перевод
+                                    </label>
+                                    {{ edit_translation_form.translated_text }}
+                                    {% if edit_translation_form.translated_text.errors %}
+                                        <div class="mt-1 text-sm text-red-600">
+                                            {{ edit_translation_form.translated_text.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <i class="fas fa-save mr-2"></i>Сохранить изменения
+                                    </button>
+                                </div>
+                            </form>
+                        {% elif user.role == 'corrector' and translation.status == 'pending' %}
+                            <!-- Форма редактирования перевода для корректора -->
+                            <form method="post" class="space-y-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="edit_translation">
+                                <div>
+                                    <label for="{{ edit_translation_form.translated_text.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Редактировать перевод
+                                    </label>
+                                    {{ edit_translation_form.translated_text }}
+                                    {% if edit_translation_form.translated_text.errors %}
+                                        <div class="mt-1 text-sm text-red-600">
+                                            {{ edit_translation_form.translated_text.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                        <i class="fas fa-save mr-2"></i>Сохранить изменения
+                                    </button>
+                                </div>
+                            </form>
+                        {% else %}
+                            <!-- Отображение перевода (только для чтения) -->
+                            <div class="p-4 bg-green-50 rounded-lg border text-gray-900 min-h-[100px]">
+                                {{ translation.translated_text }}
+                            </div>
+                        {% endif %}
                     </div>
                     
                     <div class="border-t border-gray-200 pt-4 space-y-3">

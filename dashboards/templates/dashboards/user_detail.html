@@ -92,32 +92,135 @@
         <!-- Статистика активности -->
         <div class="bg-white shadow rounded-lg p-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Статистика активности</h3>
+            
+            {% if user_obj.role in 'admin,representative' %}
             <div class="grid grid-cols-2 gap-4">
-                {% if user_obj.role in 'admin,representative' %}
                 <div class="text-center p-4 bg-blue-50 rounded-lg">
                     <div class="text-2xl font-bold text-blue-600">{{ user_documents.count }}</div>
                     <div class="text-sm text-blue-600">Загруженных документов</div>
                 </div>
-                {% endif %}
-                {% if user_obj.role == 'translator' %}
-                <div class="text-center p-4 bg-green-50 rounded-lg">
-                    <div class="text-2xl font-bold text-green-600">{{ user_sentences.count }}</div>
-                    <div class="text-sm text-green-600">Назначенных предложений</div>
+            </div>
+            {% endif %}
+            
+            {% if user_obj.role == 'translator' %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">{{ total_assigned|default:0 }}</div>
+                    <div class="text-sm text-blue-600">Всего назначено</div>
                 </div>
                 <div class="text-center p-4 bg-yellow-50 rounded-lg">
-                    <div class="text-2xl font-bold text-yellow-600">{{ user_translations.count }}</div>
-                    <div class="text-sm text-yellow-600">Выполненных переводов</div>
+                    <div class="text-2xl font-bold text-yellow-600">{{ in_progress_sentences|default:0 }}</div>
+                    <div class="text-sm text-yellow-600">В работе</div>
                 </div>
-                {% endif %}
-                {% if user_obj.role == 'corrector' %}
-                <div class="text-center p-4 bg-purple-50 rounded-lg">
-                    <div class="text-2xl font-bold text-purple-600">{{ user_corrections.count }}</div>
-                    <div class="text-sm text-purple-600">Проверенных переводов</div>
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">{{ total_translated|default:0 }}</div>
+                    <div class="text-sm text-blue-600">На проверке</div>
                 </div>
-                {% endif %}
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">{{ total_completed|default:0 }}</div>
+                    <div class="text-sm text-green-600">Завершено</div>
+                </div>
+                <div class="text-center p-4 bg-red-50 rounded-lg">
+                    <div class="text-2xl font-bold text-red-600">{{ total_rejected|default:0 }}</div>
+                    <div class="text-sm text-red-600">Отклонено</div>
+                </div>
             </div>
+            {% endif %}
+            
+            {% if user_obj.role == 'corrector' %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div class="text-2xl font-bold text-yellow-600">{{ pending_corrections|default:0 }}</div>
+                    <div class="text-sm text-yellow-600">Ожидают проверки</div>
+                </div>
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">{{ total_reviewed|default:0 }}</div>
+                    <div class="text-sm text-blue-600">Всего проверено</div>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">{{ approved_count|default:0 }}</div>
+                    <div class="text-sm text-green-600">Одобрено</div>
+                </div>
+                <div class="text-center p-4 bg-red-50 rounded-lg">
+                    <div class="text-2xl font-bold text-red-600">{{ rejected_count|default:0 }}</div>
+                    <div class="text-sm text-red-600">Отклонено</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+    </div>
+    <!-- Статистика по словам и символам -->
+    {% if user_stats %}
+    <div class="border-t border-gray-200 pt-4 mt-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Статистика по словам и символам</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Тип
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Слов
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Предложений
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Символов без пробелов
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Символов с пробелами
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-b border-gray-200">
+                            {% if user_obj.role == 'translator' %}Назначенные предложения
+                            {% elif user_obj.role == 'corrector' %}Проверенные предложения
+                            {% else %}Загруженные документы{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_words|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_sentences }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_characters_without_spaces|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_characters|floatformat:0 }}
+                        </td>
+                    </tr>
+                    {% if user_stats.translated_sentences > 0 %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-b border-gray-200">
+                            {% if user_obj.role == 'translator' %}Выполненные переводы
+                            {% elif user_obj.role == 'corrector' %}Проверенные переводы
+                            {% else %}Переведенные предложения{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_translated_words|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.translated_sentences }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_translated_characters_without_spaces|floatformat:0 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 border-b border-gray-200">
+                            {{ user_stats.total_translated_characters|floatformat:0 }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
         </div>
     </div>
+    {% endif %}
 
     <!-- Статистика переводов -->
     {% if user_obj.role == 'translator' %}
@@ -128,21 +231,21 @@
                 <div class="text-3xl font-bold text-green-600 mb-2">{{ approved_count }}</div>
                 <div class="text-sm text-gray-600">Утверждено</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-green-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ approved_percentage }}{% else %}0{% endif %}%"></div>
+                    <div class="bg-green-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ approved_percentage }}{% else %}0{% endif %}%;"></div>
                 </div>
             </div>
             <div class="text-center">
                 <div class="text-3xl font-bold text-yellow-600 mb-2">{{ pending_count }}</div>
                 <div class="text-sm text-gray-600">На проверке</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-yellow-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ pending_percentage }}{% else %}0{% endif %}%"></div>
+                    <div class="bg-yellow-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ pending_percentage }}{% else %}0{% endif %}%;"></div>
                 </div>
             </div>
             <div class="text-center">
                 <div class="text-3xl font-bold text-red-600 mb-2">{{ rejected_count }}</div>
                 <div class="text-sm text-gray-600">Отклонено</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-red-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ rejected_percentage }}{% else %}0{% endif %}%"></div>
+                    <div class="bg-red-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ rejected_percentage }}{% else %}0{% endif %}%;"></div>
                 </div>
             </div>
         </div>
@@ -248,7 +351,7 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for translation in user_translations|slice:":5" %}
-                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location.href='{% url 'translations:sentence_detail' translation.sentence.id %}'">
+                        <tr class="hover:bg-gray-50 cursor-pointer" data-href="{% url 'translations:sentence_detail' translation.sentence.id %}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {{ translation.sentence.document.title }}
                             </td>
@@ -300,7 +403,7 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for correction in user_corrections|slice:":5" %}
-                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location.href='{% url 'translations:sentence_detail' correction.sentence.id %}'">
+                        <tr class="hover:bg-gray-50 cursor-pointer" data-href="{% url 'translations:sentence_detail' correction.sentence.id %}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {{ correction.sentence.document.title }}
                             </td>
@@ -369,4 +472,19 @@
         {% endif %}
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка кликов по строкам таблицы
+    const clickableRows = document.querySelectorAll('tr[data-href]');
+    clickableRows.forEach(function(row) {
+        row.addEventListener('click', function() {
+            const href = this.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+    });
+});
+</script>
 {% endblock %} 
