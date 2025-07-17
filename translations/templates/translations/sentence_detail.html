@@ -57,12 +57,23 @@
                     </div>
                     
                     <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium text-gray-700">Назначено:</span>
+                        <span class="text-sm font-medium text-gray-700">Переводчик:</span>
                         <span class="text-sm text-gray-900">
                             {% if sentence.assigned_to %}
                                 {{ sentence.assigned_to.get_full_name|default:sentence.assigned_to.username }}
                             {% else %}
                                 <span class="text-gray-500">Не назначено</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-700">Корректор:</span>
+                        <span class="text-sm text-gray-900">
+                            {% if sentence.corrector %}
+                                {{ sentence.corrector.get_full_name|default:sentence.corrector.username }}
+                            {% else %}
+                                <span class="text-gray-500">Не назначен</span>
                             {% endif %}
                         </span>
                     </div>
@@ -90,7 +101,29 @@
                             </div>
                         </form>
                     </div>
-                    {% endif %}
+                        <div class="border-t border-gray-200 pt-4">
+                            <form method="post" class="space-y-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="assign_corrector">
+                                <div>
+                                    <label for="{{ assign_corrector_form.corrector.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                                        Назначить корректора
+                                    </label>
+                                    <div class="mt-1 flex items-center space-x-2">
+                                        {{ assign_corrector_form.corrector }}
+                                        <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                            <i class="fas fa-user-edit mr-1"></i>Назначить
+                                        </button>
+                                    </div>
+                                    {% if assign_corrector_form.corrector.errors %}
+                                        <div class="mt-1 text-sm text-red-600">
+                                            {{ assign_corrector_form.corrector.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
                     
 
                     
@@ -203,30 +236,6 @@
                         </div>
                         {% endif %}
                         
-                        {% if user.role == 'admin' or user.role == 'representative' and translation.status != 'approved' %}
-                        <div class="border-t border-gray-200 pt-4">
-                            <form method="post" class="space-y-3">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="assign_corrector">
-                                <div>
-                                    <label for="{{ assign_corrector_form.corrector.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                                        Назначить корректора
-                                    </label>
-                                    <div class="mt-1 flex items-center space-x-2">
-                                        {{ assign_corrector_form.corrector }}
-                                        <button type="submit" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                                            <i class="fas fa-user-edit mr-1"></i>Назначить
-                                        </button>
-                                    </div>
-                                    {% if assign_corrector_form.corrector.errors %}
-                                        <div class="mt-1 text-sm text-red-600">
-                                            {{ assign_corrector_form.corrector.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </form>
-                        </div>
-                        {% endif %}
                         
                         {% if user.role == 'corrector' and translation.status == 'pending' %}
                         <div class="border-t border-gray-200 pt-4">

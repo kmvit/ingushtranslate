@@ -7,10 +7,11 @@ urlpatterns = [
     path("documents/", views.document_list, name="document_list"),
     path("documents/upload/", views.document_upload, name="document_upload"),
     path("documents/<int:document_id>/", views.document_detail, name="document_detail"),
+
     path(
-        "documents/<int:document_id>/bulk-assign/",
-        views.document_bulk_assign_translator,
-        name="document_bulk_assign_translator",
+        "documents/<int:document_id>/bulk-assign-all/",
+        views.document_bulk_assign,
+        name="document_bulk_assign",
     ),
     path(
         "documents/<int:document_id>/delete/",

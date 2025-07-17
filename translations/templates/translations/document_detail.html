@@ -150,11 +150,10 @@
                         <select name="status" id="status" 
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
                             <option value="">Все статусы</option>
-                            <option value="translated" {% if status_filter == "translated" %}selected{% endif %}>Переведено</option>
-                            <option value="not_translated" {% if status_filter == "not_translated" %}selected{% endif %}>Не переведено</option>
-                            <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утверждено</option>
-                            <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклонено</option>
-                            <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>На проверке</option>
+                            <option value="0" {% if status_filter == "0" %}selected{% endif %}>Не подтвержден</option>
+                            <option value="1" {% if status_filter == "1" %}selected{% endif %}>Подтвердил переводчик</option>
+                            <option value="2" {% if status_filter == "2" %}selected{% endif %}>Подтвердил корректор</option>
+                            <option value="3" {% if status_filter == "3" %}selected{% endif %}>Отклонено корректором</option>
                         </select>
                     </div>
                     <div class="flex items-end">
@@ -168,15 +167,19 @@
         </div>
     </div>
 
-    <!-- Массовое назначение переводчиков -->
+    <!-- Массовое назначение переводчика и корректора -->
     {% if user.role == 'admin' or user.role == 'representative' %}
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
-            <form method="post" action="{% url 'translations:document_bulk_assign_translator' document_id=document.id %}" id="bulk-assign-form">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-users mr-2"></i>Массовое назначение на все предложения документа
+            </h3>
+            <form method="post" action="{% url 'translations:document_bulk_assign' document_id=document.id %}">
                 {% csrf_token %}
-                <div class="flex items-center space-x-4">
-                    <div class="flex-1 max-w-xs">
-                        <select name="assigned_to" id="bulk-assign-translator" 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="assigned_to" class="block text-sm font-medium text-gray-700 mb-1">Переводчик</label>
+                        <select name="assigned_to" id="assigned_to" 
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
                             <option value="">Выберите переводчика...</option>
                             {% for choice in assign_form.assigned_to.field.choices %}
@@ -186,10 +189,24 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <button type="submit" id="bulk-assign-btn" disabled
-                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <div>
+                        <label for="corrector" class="block text-sm font-medium text-gray-700 mb-1">Корректор</label>
+                        <select name="corrector" id="corrector" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                            <option value="">Выберите корректора...</option>
+                            {% for choice in assign_corrector_form.corrector.field.choices %}
+                                {% if choice.0 %}
+                                    <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                         <i class="fas fa-user-plus mr-2"></i>
-                        Назначить выбранным
+                        Назначить на все предложения
                     </button>
                 </div>
             </form>
@@ -207,11 +224,6 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        {% if user.role == 'admin' or user.role == 'representative' %}
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                            <input type="checkbox" id="select-all-header" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                        </th>
-                        {% endif %}
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             №
                         </th>
@@ -219,7 +231,10 @@
                             Статус
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                            Назначено
+                            Переводчик
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Корректор
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             Оригинальный текст
@@ -232,33 +247,25 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for sentence in page_obj %}
                     <tr class="hover:bg-gray-50 cursor-pointer" data-href="{% url 'translations:sentence_detail' sentence.id %}">
-                        {% if user.role == 'admin' or user.role == 'representative' %}
-                        <td class="px-6 py-4 whitespace-nowrap" onclick="event.stopPropagation();">
-                            <input type="checkbox" name="sentence_ids" value="{{ sentence.id }}" form="bulk-assign-form" 
-                                   class="sentence-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                        </td>
-                        {% endif %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {{ sentence.sentence_number }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            {% if sentence.translation %}
-                                {% if sentence.translation.status == 'approved' %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        <i class="fas fa-check mr-1"></i>Утверждено
-                                    </span>
-                                {% elif sentence.translation.status == 'rejected' %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        <i class="fas fa-times mr-1"></i>Отклонено
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-clock mr-1"></i>На проверке
-                                    </span>
-                                {% endif %}
-                            {% else %}
+                            {% if sentence.status == 0 %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    <i class="fas fa-minus mr-1"></i>Не переведено
+                                    <i class="fas fa-minus mr-1"></i>Не подтвержден
+                                </span>
+                            {% elif sentence.status == 1 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <i class="fas fa-user-check mr-1"></i>Подтвердил переводчик
+                                </span>
+                            {% elif sentence.status == 2 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-check mr-1"></i>Подтвердил корректор
+                                </span>
+                            {% elif sentence.status == 3 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <i class="fas fa-times mr-1"></i>Отклонено корректором
                                 </span>
                             {% endif %}
                         </td>
@@ -269,6 +276,18 @@
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     {{ sentence.assigned_to.email }}
+                                </div>
+                            {% else %}
+                                <span class="text-sm text-gray-500">Не назначено</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if sentence.corrector %}
+                                <div class="text-sm text-gray-900">
+                                    {{ sentence.corrector.get_full_name|default:sentence.corrector.username }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ sentence.corrector.email }}
                                 </div>
                             {% else %}
                                 <span class="text-sm text-gray-500">Не назначено</span>
@@ -297,7 +316,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center">
                                 <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
                                 <p class="text-lg font-medium">Предложения не найдены</p>
@@ -399,70 +418,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
-    // Управление чекбоксами для массового назначения
-    const selectAllHeaderCheckbox = document.getElementById('select-all-header');
-    const sentenceCheckboxes = document.querySelectorAll('.sentence-checkbox');
-    const bulkAssignBtn = document.getElementById('bulk-assign-btn');
-    const bulkAssignForm = document.getElementById('bulk-assign-form');
-    const translatorSelect = document.getElementById('bulk-assign-translator');
-
-    // Функция для обновления состояния кнопки
-    function updateButtonState() {
-        const checkedBoxes = document.querySelectorAll('.sentence-checkbox:checked');
-        const translatorSelected = translatorSelect && translatorSelect.value !== '';
-        if (bulkAssignBtn) {
-            bulkAssignBtn.disabled = checkedBoxes.length === 0 || !translatorSelected;
-        }
-    }
-
-    // Обработчик для чекбокса в заголовке
-    if (selectAllHeaderCheckbox) {
-        selectAllHeaderCheckbox.addEventListener('change', function() {
-            sentenceCheckboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
-            });
-            updateButtonState();
-        });
-    }
-
-    // Обработчики для отдельных чекбоксов
-    sentenceCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const checkedBoxes = document.querySelectorAll('.sentence-checkbox:checked');
-            const allBoxes = document.querySelectorAll('.sentence-checkbox');
-            
-            if (selectAllHeaderCheckbox) {
-                selectAllHeaderCheckbox.checked = checkedBoxes.length === allBoxes.length;
-            }
-            updateButtonState();
-        });
-    });
-
-    // Обработчик для выбора переводчика
-    if (translatorSelect) {
-        translatorSelect.addEventListener('change', updateButtonState);
-    }
-
-    // Обработчик отправки формы
-    if (bulkAssignForm) {
-        bulkAssignForm.addEventListener('submit', function(e) {
-            const checkedBoxes = document.querySelectorAll('.sentence-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                e.preventDefault();
-                alert('Пожалуйста, выберите хотя бы одно предложение.');
-                return;
-            }
-            if (translatorSelect && !translatorSelect.value) {
-                e.preventDefault();
-                alert('Пожалуйста, выберите переводчика.');
-                return;
-            }
-        });
-    }
-
-    // Инициализация состояния кнопки
-    updateButtonState();
 });
 </script>
 {% endblock %} 

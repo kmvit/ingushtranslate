@@ -29,8 +29,8 @@ def create_translation_history(sender, instance, created, **kwargs):
             notes = ""
 
     # Определяем пользователя
-    if action in ["approved", "rejected", "corrected"] and instance.corrector:
-        user = instance.corrector
+    if action in ["approved", "rejected", "corrected"] and instance.sentence.corrector:
+        user = instance.sentence.corrector
     else:
         user = instance.translator
 

@@ -211,6 +211,9 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Назначено
                     </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Корректор
+                    </th>
                     {% endif %}
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {% if user.role == 'translator' %}Мой перевод{% else %}Перевод{% endif %}
@@ -279,6 +282,18 @@
                             <span class="text-sm text-gray-500">Не назначено</span>
                         {% endif %}
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if sentence.corrector %}
+                            <div class="text-sm text-gray-900">
+                                {{ sentence.corrector.get_full_name|default:sentence.corrector.username }}
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                {{ sentence.corrector.email }}
+                            </div>
+                        {% else %}
+                            <span class="text-sm text-gray-500">Не назначен</span>
+                        {% endif %}
+                    </td>
                     {% endif %}
                     <td class="px-6 py-4">
                         {% if sentence.has_translation %}
@@ -327,7 +342,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{% if user.role == 'translator' %}5{% elif user.role == 'corrector' %}5{% else %}6{% endif %}" class="px-6 py-12 text-center text-gray-500">
+                    <td colspan="{% if user.role == 'translator' %}5{% elif user.role == 'corrector' %}5{% else %}7{% endif %}" class="px-6 py-12 text-center text-gray-500">
                         <div class="flex flex-col items-center">
                             <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
                             <p class="text-lg font-medium">

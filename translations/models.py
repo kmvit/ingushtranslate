@@ -42,6 +42,7 @@ class Sentence(models.Model):
         (0, "Не подтвержден"),
         (1, "Подтвердил переводчик"),
         (2, "Подтвердил корректор"),
+        (3, "Отклонено корректором"),
     ]
 
     document = models.ForeignKey(
@@ -62,6 +63,14 @@ class Sentence(models.Model):
         blank=True,
         related_name="assigned_sentences",
         verbose_name="Назначено переводчику",
+    )
+    corrector = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_corrections",
+        verbose_name="Назначено корректору",
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
@@ -85,6 +94,11 @@ class Sentence(models.Model):
         """Проверяет, завершен ли перевод (статус 2)"""
         return self.status == 2
 
+    @property
+    def is_rejected(self):
+        """Проверяет, отклонен ли перевод корректором (статус 3)"""
+        return self.status == 3
+
 
 class Translation(models.Model):
     """Модель для переводов предложений"""
@@ -106,14 +120,6 @@ class Translation(models.Model):
         on_delete=models.CASCADE,
         related_name="translations",
         verbose_name="Переводчик",
-    )
-    corrector = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="corrected_translations",
-        verbose_name="Корректор",
     )
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Статус"
@@ -137,6 +143,9 @@ class Translation(models.Model):
         # Обновляем статус предложения при сохранении перевода
         if self.status == "approved":
             self.sentence.status = 2
+            self.sentence.save()
+        elif self.status == "rejected":
+            self.sentence.status = 3
             self.sentence.save()
         elif self.translated_text and self.status == "pending":
             self.sentence.status = 1

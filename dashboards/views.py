@@ -182,7 +182,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
             
         elif user_obj.role == 'corrector':
             # Получаем переводы, проверенные корректором
-            user_corrections = Translation.objects.filter(corrector=user_obj)
+            user_corrections = Translation.objects.filter(sentence__corrector=user_obj)
             
             # Статистика по оригинальным текстам (предложения с проверенными переводами)
             total_words = 0
@@ -296,7 +296,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
         context["user_documents"] = Document.objects.filter(uploaded_by=user_obj)
         context["user_sentences"] = Sentence.objects.filter(assigned_to=user_obj)
         context["user_translations"] = Translation.objects.filter(translator=user_obj)
-        context["user_corrections"] = Translation.objects.filter(corrector=user_obj)
+        context["user_corrections"] = Translation.objects.filter(sentence__corrector=user_obj)
 
         # Статистика по статусам переводов
         user_translations = context["user_translations"]
@@ -352,17 +352,17 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
             in_review_translations = Translation.objects.filter(
                 translated_text__isnull=False
             ).exclude(translated_text="").filter(
-                Q(corrector=user_obj) | Q(corrector__isnull=True)
+                Q(sentence__corrector=user_obj) | Q(sentence__corrector__isnull=True)
             )
             
             # Переводы, которые нужно проверить (статус pending) и назначены этому корректору
             pending_corrections = Translation.objects.filter(
-                Q(status="pending") & (Q(corrector=user_obj) | Q(corrector__isnull=True))
+                Q(status="pending") & (Q(sentence__corrector=user_obj) | Q(sentence__corrector__isnull=True))
             )
             
             # Переводы, которые уже проверены этим корректором
             completed_corrections = Translation.objects.filter(
-                corrector=user_obj, status__in=["approved", "rejected"]
+                sentence__corrector=user_obj, status__in=["approved", "rejected"]
             )
             
             context["total_reviewed"] = completed_corrections.count()
@@ -388,7 +388,7 @@ class UserCreateView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         form = UserForm()
         context = {
             "form": form,
-            "user": None,  # Явно указываем, что это создание
+            "user_obj": None,  # Изменяем имя переменной, чтобы не конфликтовать с request.user
         }
         return render(request, self.template_name, context)
 
@@ -408,7 +408,7 @@ class UserCreateView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
 
         context = {
             "form": form,
-            "user": None,  # Явно указываем, что это создание
+            "user_obj": None,  # Изменяем имя переменной, чтобы не конфликтовать с request.user
         }
         return render(request, self.template_name, context)
 
@@ -567,7 +567,7 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
             )
             .exclude(translated_text="")
             .filter(
-                Q(corrector=self.request.user) | Q(corrector__isnull=True)
+                Q(sentence__corrector=self.request.user) | Q(sentence__corrector__isnull=True)
             )
             .select_related("sentence__document", "translator")
             .order_by("-translated_at")
@@ -575,12 +575,12 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
 
         # Получаем переводы, которые нужно проверить (статус pending) и назначены этому корректору
         context["pending_corrections"] = Translation.objects.filter(
-            Q(status="pending") & (Q(corrector=self.request.user) | Q(corrector__isnull=True))
+            Q(status="pending") & (Q(sentence__corrector=self.request.user) | Q(sentence__corrector__isnull=True))
         )
 
         # Получаем переводы, которые уже проверены этим корректором
         completed_corrections = Translation.objects.filter(
-            corrector=self.request.user, status__in=["approved", "rejected"]
+            sentence__corrector=self.request.user, status__in=["approved", "rejected"]
         )
         context["completed_corrections"] = completed_corrections
 

@@ -122,7 +122,7 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
             sheet.cell(
                 row=row,
                 column=5,
-                value=str(translation.corrector) if translation.corrector else "",
+                value=str(sentence.corrector) if sentence.corrector else "",
             )
 
             # Статус
