@@ -3,10 +3,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import View, TemplateView, ListView, DetailView
 from django.db.models import Q, Count
+from django.http import HttpResponse
 from users.models import User
 from translations.models import Document, Sentence, Translation
+from translations.export_utils import export_user_report
 from .mixins import AdminOrRepresentativeMixin, TranslatorOnlyMixin, CorrectorOnlyMixin
 from .forms import UserForm
+import os
+import logging
 
 
 
@@ -604,6 +608,49 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         return context
 
 
+class UserExportReportView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
+    """Экспорт отчета по конкретному пользователю"""
+
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id)
+        
+        # Получаем все необходимые данные для отчета
+        user_detail_view = UserDetailView()
+        user_detail_view.object = user
+        context_data = user_detail_view.get_context_data()
+        user_stats = user_detail_view.get_user_statistics(user)
+        
+        try:
+            file_path = export_user_report(user, user_stats, context_data)
+            
+            # Проверяем, что файл существует
+            if not os.path.exists(file_path):
+                raise FileNotFoundError("Файл отчета не был создан")
+            
+            # Читаем файл и отправляем как ответ
+            with open(file_path, "rb") as f:
+                response = HttpResponse(
+                    f.read(), 
+                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+            
+            # Удаляем временный файл
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass  # Игнорируем ошибки при удалении временного файла
+            
+            return response
+            
+        except Exception as e:
+            import traceback
+            logging.error(f"Ошибка при экспорте отчета: {str(e)}")
+            logging.error(traceback.format_exc())
+            messages.error(request, f"Ошибка при экспорте отчета: {str(e)}")
+            return redirect("dashboards:user_detail", user_id=user_id)
+
+
 # Переименованные представления для обратной совместимости
 home = HomeView.as_view()
 dashboard = DashboardView.as_view()
@@ -615,3 +662,4 @@ user_delete = UserDeleteView.as_view()
 user_statistics = UserStatisticsView.as_view()
 translator_dashboard = TranslatorDashboardView.as_view()
 corrector_dashboard = CorrectorDashboardView.as_view()
+user_export_report = UserExportReportView.as_view()

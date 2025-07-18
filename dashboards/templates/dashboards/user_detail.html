@@ -28,6 +28,13 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
+                {% if request.user.role in 'admin,representative' %}
+                <a href="{% url 'dashboards:user_export_report' user_obj.id %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <i class="fas fa-download mr-2"></i>
+                    Экспорт отчета
+                </a>
+                {% endif %}
                 {% if request.user.role == 'admin' and user_obj != request.user %}
                 <a href="{% url 'dashboards:user_edit' user_obj.id %}" 
                    class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
@@ -231,21 +238,21 @@
                 <div class="text-3xl font-bold text-green-600 mb-2">{{ approved_count }}</div>
                 <div class="text-sm text-gray-600">Утверждено</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-green-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ approved_percentage }}{% else %}0{% endif %}%;"></div>
+                    <div class="bg-green-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ approved_percentage }}{% else %}0{% endif %}%"></div>
                 </div>
             </div>
             <div class="text-center">
                 <div class="text-3xl font-bold text-yellow-600 mb-2">{{ pending_count }}</div>
                 <div class="text-sm text-gray-600">На проверке</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-yellow-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ pending_percentage }}{% else %}0{% endif %}%;"></div>
+                    <div class="bg-yellow-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ pending_percentage }}{% else %}0{% endif %}%"></div>
                 </div>
             </div>
             <div class="text-center">
                 <div class="text-3xl font-bold text-red-600 mb-2">{{ rejected_count }}</div>
                 <div class="text-sm text-gray-600">Отклонено</div>
                 <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div class="bg-red-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ rejected_percentage }}{% else %}0{% endif %}%;"></div>
+                    <div class="bg-red-600 h-2 rounded-full" style="width: {% if user_translations.count > 0 %}{{ rejected_percentage }}{% else %}0{% endif %}%"></div>
                 </div>
             </div>
         </div>

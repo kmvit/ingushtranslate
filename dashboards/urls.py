@@ -28,4 +28,9 @@ urlpatterns = [
         name="user_delete",
     ),
     path("users/create/", views.UserCreateView.as_view(), name="user_create"),
+    path(
+        "users/<int:user_id>/export/",
+        views.UserExportReportView.as_view(),
+        name="user_export_report",
+    ),
 ]

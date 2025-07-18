@@ -1,7 +1,16 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.http import HttpResponse
+from django.contrib import messages
+from django.shortcuts import redirect
+import os
 
 from .models import Document, Sentence, Translation, TranslationHistory
+from .export_utils import (
+    export_document_translations,
+    export_document_all_formats,
+    get_document_statistics,
+)
 
 
 class TranslationInline(admin.TabularInline):
@@ -43,15 +52,116 @@ class DocumentAdmin(admin.ModelAdmin):
         "uploaded_at",
         "is_processed",
         "sentences_count",
+        "completion_percentage",
     ]
     list_filter = ["is_processed", "uploaded_at", "uploaded_by__role"]
     search_fields = ["file", "uploaded_by__first_name", "uploaded_by__last_name"]
     readonly_fields = ["uploaded_at"]
+    actions = [
+        "export_selected_to_txt",
+        "export_selected_to_docx", 
+        "export_selected_to_xlsx",
+        "export_selected_all_formats",
+    ]
 
     def sentences_count(self, obj):
         return obj.sentences.count()
 
     sentences_count.short_description = "Количество предложений"
+
+    def completion_percentage(self, obj):
+        stats = get_document_statistics(obj)
+        return f"{stats['completion_percentage']}%"
+
+    completion_percentage.short_description = "Процент завершения"
+
+    def export_selected_to_txt(self, request, queryset):
+        """Экспорт выбранных документов в TXT формат"""
+        if len(queryset) == 1:
+            document = queryset.first()
+            try:
+                file_path = export_document_translations(document, "txt")
+                with open(file_path, "rb") as f:
+                    response = HttpResponse(f.read(), content_type="application/octet-stream")
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                
+                # Удаляем временный файл
+                os.remove(file_path)
+                return response
+            except Exception as e:
+                messages.error(request, f"Ошибка при экспорте: {str(e)}")
+                return redirect("admin:translations_document_changelist")
+        else:
+            messages.warning(request, "Пожалуйста, выберите только один документ для экспорта в TXT.")
+            return redirect("admin:translations_document_changelist")
+
+    export_selected_to_txt.short_description = "Экспорт в TXT"
+
+    def export_selected_to_docx(self, request, queryset):
+        """Экспорт выбранных документов в DOCX формат"""
+        if len(queryset) == 1:
+            document = queryset.first()
+            try:
+                file_path = export_document_translations(document, "docx")
+                with open(file_path, "rb") as f:
+                    response = HttpResponse(f.read(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                
+                # Удаляем временный файл
+                os.remove(file_path)
+                return response
+            except Exception as e:
+                messages.error(request, f"Ошибка при экспорте: {str(e)}")
+                return redirect("admin:translations_document_changelist")
+        else:
+            messages.warning(request, "Пожалуйста, выберите только один документ для экспорта в DOCX.")
+            return redirect("admin:translations_document_changelist")
+
+    export_selected_to_docx.short_description = "Экспорт в DOCX"
+
+    def export_selected_to_xlsx(self, request, queryset):
+        """Экспорт выбранных документов в XLSX формат"""
+        if len(queryset) == 1:
+            document = queryset.first()
+            try:
+                file_path = export_document_translations(document, "xlsx")
+                with open(file_path, "rb") as f:
+                    response = HttpResponse(f.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                
+                # Удаляем временный файл
+                os.remove(file_path)
+                return response
+            except Exception as e:
+                messages.error(request, f"Ошибка при экспорте: {str(e)}")
+                return redirect("admin:translations_document_changelist")
+        else:
+            messages.warning(request, "Пожалуйста, выберите только один документ для экспорта в XLSX.")
+            return redirect("admin:translations_document_changelist")
+
+    export_selected_to_xlsx.short_description = "Экспорт в XLSX"
+
+    def export_selected_all_formats(self, request, queryset):
+        """Экспорт выбранных документов во всех форматах в ZIP архиве"""
+        if len(queryset) == 1:
+            document = queryset.first()
+            try:
+                file_path = export_document_all_formats(document)
+                with open(file_path, "rb") as f:
+                    response = HttpResponse(f.read(), content_type="application/zip")
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                
+                # Удаляем временный файл
+                os.remove(file_path)
+                return response
+            except Exception as e:
+                messages.error(request, f"Ошибка при экспорте: {str(e)}")
+                return redirect("admin:translations_document_changelist")
+        else:
+            messages.warning(request, "Пожалуйста, выберите только один документ для экспорта во всех форматах.")
+            return redirect("admin:translations_document_changelist")
+
+    export_selected_all_formats.short_description = "Экспорт во всех форматах (ZIP)"
 
 
 @admin.register(Sentence)
