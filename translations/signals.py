@@ -3,7 +3,6 @@ import os
 from django.core.files.storage import default_storage
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
 
 from .models import Document, Sentence, Translation
 from .utils import extract_and_validate_sentences

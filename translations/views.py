@@ -16,7 +16,12 @@ from .export_utils import (
     export_sentences_to_csv,
 )
 from dashboards.mixins import AdminOrRepresentativeMixin
-from .forms import AssignTranslatorForm, AssignCorrectorForm, CreateTranslationForm, EditTranslationForm
+from .forms import (
+    AssignTranslatorForm,
+    AssignCorrectorForm,
+    CreateTranslationForm,
+    EditTranslationForm,
+)
 
 
 class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
@@ -136,7 +141,7 @@ class DocumentUploadView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
                     if document.file:
                         default_storage.delete(document.file.name)
                     document.delete()
-                except:
+                except Exception:
                     pass
 
             messages.error(request, f"Ошибка при загрузке документа: {str(e)}")
@@ -219,60 +224,68 @@ class DocumentBulkAssignView(LoginRequiredMixin, AdminOrRepresentativeMixin, Vie
 
         try:
             from users.models import User
-            
+
             translator = None
             corrector = None
-            
+
             if translator_id:
                 translator = User.objects.get(id=translator_id, role="translator")
-            
+
             if corrector_id:
                 corrector = User.objects.get(id=corrector_id, role="corrector")
 
             sentences = Sentence.objects.filter(document=document)
-            
+
             assigned_translator_count = 0
             assigned_corrector_count = 0
-            
+
             for sentence in sentences:
                 updated = False
-                
+
                 # Назначаем переводчика
                 if translator and sentence.assigned_to != translator:
                     sentence.assigned_to = translator
                     updated = True
                     assigned_translator_count += 1
-                
+
                 # Назначаем корректора
                 if corrector and sentence.corrector != corrector:
                     sentence.corrector = corrector
                     updated = True
                     assigned_corrector_count += 1
-                
+
                 if updated:
                     sentence.save()
 
             # Формируем сообщение об успехе
             success_messages = []
             if assigned_translator_count > 0:
-                success_messages.append(f'Переводчик {translator.get_full_name()} назначен для {assigned_translator_count} предложений')
+                success_messages.append(
+                    f"Переводчик {translator.get_full_name()} назначен для {assigned_translator_count} предложений"
+                )
             if assigned_corrector_count > 0:
-                success_messages.append(f'Корректор {corrector.get_full_name()} назначен для {assigned_corrector_count} предложений')
-            
+                success_messages.append(
+                    f"Корректор {corrector.get_full_name()} назначен для {assigned_corrector_count} предложений"
+                )
+
             if success_messages:
-                messages.success(request, f'Документ "{document.title}": {", ".join(success_messages)}.')
+                messages.success(
+                    request,
+                    f'Документ "{document.title}": {", ".join(success_messages)}.',
+                )
             else:
-                messages.info(request, "Все предложения уже назначены выбранным пользователям.")
+                messages.info(
+                    request, "Все предложения уже назначены выбранным пользователям."
+                )
 
         except User.DoesNotExist:
-            messages.error(request, "Выбранный пользователь не найден или имеет неподходящую роль.")
+            messages.error(
+                request, "Выбранный пользователь не найден или имеет неподходящую роль."
+            )
         except Exception as e:
             messages.error(request, f"Ошибка при назначении: {str(e)}")
 
         return redirect("translations:document_detail", document_id=document_id)
-
-
-
 
 
 class DocumentDeleteView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
@@ -323,8 +336,8 @@ class SentenceListView(LoginRequiredMixin, ListView):
         # Для корректоров показываем предложения с переводами, назначенные этому корректору
         elif self.request.user.role == "corrector":
             queryset = queryset.filter(
-                Q(translation__isnull=False) &  # Только предложения с переводами
-                Q(corrector=self.request.user)  # Назначенные этому корректору
+                Q(translation__isnull=False)  # Только предложения с переводами
+                & Q(corrector=self.request.user)  # Назначенные этому корректору
             )
         # Для админов и представителей показываем все предложения
         elif self.request.user.role in ["admin", "representative"]:
@@ -571,11 +584,19 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                 context["create_translation_form"] = CreateTranslationForm()
             # Добавляем форму редактирования перевода, если перевод существует и корректор еще не подтвердил
             elif hasattr(self.object, "translation") and self.object.status != 2:
-                context["edit_translation_form"] = EditTranslationForm(instance=self.object.translation)
+                context["edit_translation_form"] = EditTranslationForm(
+                    instance=self.object.translation
+                )
 
         # Добавляем форму редактирования перевода для корректоров
-        if self.request.user.role == "corrector" and hasattr(self.object, "translation") and self.object.translation.status == "pending":
-            context["edit_translation_form"] = EditTranslationForm(instance=self.object.translation)
+        if (
+            self.request.user.role == "corrector"
+            and hasattr(self.object, "translation")
+            and self.object.translation.status == "pending"
+        ):
+            context["edit_translation_form"] = EditTranslationForm(
+                instance=self.object.translation
+            )
 
         return context
 
@@ -657,8 +678,6 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
             else:
                 messages.error(request, "Ошибка при назначении корректора")
 
-
-
         # Обработка создания перевода (для переводчиков)
         elif action == "create_translation":
             if request.user.role != "translator":
@@ -712,18 +731,30 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                 # Проверяем, что переводчик назначен на это предложение
                 if sentence.assigned_to != request.user:
                     messages.error(request, "Вы не назначены на это предложение.")
-                    return redirect("translations:sentence_detail", sentence_id=sentence_id)
+                    return redirect(
+                        "translations:sentence_detail", sentence_id=sentence_id
+                    )
 
                 # Проверяем, что корректор еще не подтвердил предложение
                 if sentence.status == 2:
-                    messages.error(request, "Нельзя редактировать перевод после подтверждения корректором.")
-                    return redirect("translations:sentence_detail", sentence_id=sentence_id)
-            
+                    messages.error(
+                        request,
+                        "Нельзя редактировать перевод после подтверждения корректором.",
+                    )
+                    return redirect(
+                        "translations:sentence_detail", sentence_id=sentence_id
+                    )
+
             elif request.user.role == "corrector":
                 # Проверяем, что перевод находится в статусе "pending"
                 if sentence.translation.status != "pending":
-                    messages.error(request, "Можно редактировать только переводы в статусе 'на проверке'.")
-                    return redirect("translations:sentence_detail", sentence_id=sentence_id)
+                    messages.error(
+                        request,
+                        "Можно редактировать только переводы в статусе 'на проверке'.",
+                    )
+                    return redirect(
+                        "translations:sentence_detail", sentence_id=sentence_id
+                    )
 
             form = EditTranslationForm(request.POST, instance=sentence.translation)
 
@@ -735,7 +766,8 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                 )
             else:
                 messages.error(
-                    request, "Ошибка при обновлении перевода. Проверьте введенные данные."
+                    request,
+                    "Ошибка при обновлении перевода. Проверьте введенные данные.",
                 )
 
         # Обработка проверки перевода (для корректоров)
@@ -765,11 +797,11 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                 translation.status = "rejected"
                 translation.corrected_at = timezone.now()
                 translation.save()
-                
+
                 # Изменяем статус предложения обратно на "подтвердил переводчик"
                 sentence.status = 1
                 sentence.save()
-                
+
                 messages.success(
                     request,
                     f"Перевод для предложения №{sentence.sentence_number} отклонен. Статус предложения изменен на 'подтвердил переводчик'.",

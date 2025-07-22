@@ -3,9 +3,6 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-# Импортируем настройки админки
-import ingushtranslate.admin
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("dashboards.urls")),

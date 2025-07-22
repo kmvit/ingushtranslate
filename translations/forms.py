@@ -36,17 +36,19 @@ class AssignTranslatorForm(forms.ModelForm):
 
 class AssignCorrectorForm(forms.Form):
     """Форма для назначения корректора переводу"""
-    
+
     corrector = forms.ModelChoiceField(
-        queryset=User.objects.filter(role="corrector").order_by("first_name", "last_name"),
+        queryset=User.objects.filter(role="corrector").order_by(
+            "first_name", "last_name"
+        ),
         empty_label="Выберите корректора...",
         required=False,
-        label="Корректор"
+        label="Корректор",
     )
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Получаем только пользователей с ролью корректора
         correctors = User.objects.filter(role="corrector").order_by(
             "first_name", "last_name"

@@ -117,7 +117,7 @@ class RegisterView(View):
                 else:
                     return redirect("dashboards:home")
 
-        except Exception as e:
+        except Exception:
             # Если произошла ошибка, показываем форму снова
             pass
 
