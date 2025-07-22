@@ -91,7 +91,9 @@ WSGI_APPLICATION = "ingushtranslate.wsgi.application"
 
 # Используем PostgreSQL в production, SQLite в development
 if os.environ.get("DATABASE_URL"):
-    DATABASES = {"default": dj_database_url.parse(os.environ.get("DATABASE_URL"))}
+    DATABASES = {
+        "default": dj_database_url.parse(os.environ.get("DATABASE_URL"))
+    }
 else:
     DATABASES = {
         "default": {
