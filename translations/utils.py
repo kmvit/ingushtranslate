@@ -1,9 +1,10 @@
 import re
 from typing import List, Tuple
 
+from django.core.exceptions import ValidationError
+
 import docx
 import openpyxl
-from django.core.exceptions import ValidationError
 
 
 def extract_sentences_from_text(text: str) -> List[str]:

@@ -1,27 +1,30 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib import messages
-from django.http import HttpResponse
-from django.views.generic import View, ListView, DetailView
-from django.db.models import Q
-from django.core.files.storage import default_storage
-from django.utils import timezone
 import os
-from .models import Document, Sentence, Translation
-from .utils import extract_and_validate_sentences
-from .export_utils import (
-    export_document_translations,
-    export_document_all_formats,
-    get_document_statistics,
-    export_sentences_to_csv,
-)
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.files.storage import default_storage
+from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.generic import DetailView, ListView, View
+
 from dashboards.mixins import AdminOrRepresentativeMixin
+
+from .export_utils import (
+    export_document_all_formats,
+    export_document_translations,
+    export_sentences_to_csv,
+    get_document_statistics,
+)
 from .forms import (
-    AssignTranslatorForm,
     AssignCorrectorForm,
+    AssignTranslatorForm,
     CreateTranslationForm,
     EditTranslationForm,
 )
+from .models import Document, Sentence, Translation
+from .utils import extract_and_validate_sentences
 
 
 class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):

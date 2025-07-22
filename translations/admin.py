@@ -1,16 +1,16 @@
-from django.contrib import admin
-from django.utils.html import format_html
-from django.http import HttpResponse
-from django.contrib import messages
-from django.shortcuts import redirect
 import os
 
-from .models import Document, Sentence, Translation, TranslationHistory
+from django.contrib import admin, messages
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.utils.html import format_html
+
 from .export_utils import (
-    export_document_translations,
     export_document_all_formats,
+    export_document_translations,
     get_document_statistics,
 )
+from .models import Document, Sentence, Translation, TranslationHistory
 
 
 class TranslationInline(admin.TabularInline):

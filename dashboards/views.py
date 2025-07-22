@@ -1,16 +1,19 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib import messages
-from django.views.generic import View, TemplateView, ListView, DetailView
-from django.db.models import Q, Count
-from django.http import HttpResponse
-from users.models import User
-from translations.models import Document, Sentence, Translation
-from translations.export_utils import export_user_report
-from .mixins import AdminOrRepresentativeMixin, TranslatorOnlyMixin, CorrectorOnlyMixin
-from .forms import UserForm
-import os
 import logging
+import os
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.generic import DetailView, ListView, TemplateView, View
+
+from translations.export_utils import export_user_report
+from translations.models import Document, Sentence, Translation
+from users.models import User
+
+from .forms import UserForm
+from .mixins import AdminOrRepresentativeMixin, CorrectorOnlyMixin, TranslatorOnlyMixin
 
 
 class HomeView(View):

@@ -1,16 +1,17 @@
+import csv
+import logging
 import os
 import shutil
-from typing import Dict
-import zipfile
 import tempfile
+import zipfile
+from typing import Dict
+
+from django.core.files.storage import default_storage
+from django.http import HttpResponse
+from django.utils.encoding import smart_str
 
 import docx
 import openpyxl
-from django.core.files.storage import default_storage
-import csv
-from django.utils.encoding import smart_str
-from django.http import HttpResponse
-import logging
 
 from .models import Document
 

@@ -24,4 +24,4 @@ line_length = 88
 known_django = "django"
 known_first_party = ["accounts", "translations", "dashboards"]
 sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-skip = ["migrations"]
+skip = ["migrations", "venv"]
