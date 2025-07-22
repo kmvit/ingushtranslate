@@ -33,7 +33,11 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-40=$gmk50j^s8hg+6%@vh
 DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",") if os.environ.get("ALLOWED_HOSTS") else []
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{origin}" if not origin.startswith(("http://", "https://")) else origin
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin
+]
 
 AUTH_USER_MODEL = "users.User"
 
@@ -130,7 +134,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    os.path.join(BASE_DIR, "static"),
 ]
 
 # Media files (Uploaded files)
