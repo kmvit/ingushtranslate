@@ -11,9 +11,7 @@ class User(AbstractUser):
         ("translator", "Переводчик"),
         ("corrector", "Корректор"),
     ]
-    role = models.CharField(
-        max_length=20, choices=ROLE_CHOICES, default="translator", verbose_name="Роль"
-    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="translator", verbose_name="Роль")
     email = models.EmailField(unique=True, verbose_name="Email")
     phone = models.CharField(max_length=15, blank=True, verbose_name="Телефон")
 

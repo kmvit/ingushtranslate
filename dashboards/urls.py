@@ -11,9 +11,7 @@ urlpatterns = [
         views.TranslatorDashboardView.as_view(),
         name="translator_dashboard",
     ),
-    path(
-        "corrector/", views.CorrectorDashboardView.as_view(), name="corrector_dashboard"
-    ),
+    path("corrector/", views.CorrectorDashboardView.as_view(), name="corrector_dashboard"),
     path(
         "statistics/user/<int:user_id>/",
         views.UserStatisticsView.as_view(),

@@ -34,8 +34,7 @@ class RoleRequiredMixin(UserPassesTestMixin):
 
         # Если пользователь аутентифицирован, но роль не подходит
         raise PermissionDenied(
-            f"У вас нет доступа к этой странице. "
-            f"Требуемые роли: {', '.join(self.allowed_roles)}"
+            f"У вас нет доступа к этой странице. " f"Требуемые роли: {', '.join(self.allowed_roles)}"
         )
 
 

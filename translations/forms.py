@@ -14,9 +14,7 @@ class AssignTranslatorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Получаем только пользователей с ролью переводчика
-        translators = User.objects.filter(role="translator").order_by(
-            "first_name", "last_name"
-        )
+        translators = User.objects.filter(role="translator").order_by("first_name", "last_name")
 
         # Создаем выбор с пустым вариантом
         choices = [("", "Выберите переводчика...")]
@@ -27,7 +25,9 @@ class AssignTranslatorForm(forms.ModelForm):
         self.fields["assigned_to"].choices = choices
         self.fields["assigned_to"].widget.attrs.update(
             {
-                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 "
+                "focus:outline-none focus:ring-primary-500 focus:border-primary-500 "
+                "sm:text-sm rounded-md"
             }
         )
         self.fields["assigned_to"].required = False
@@ -38,9 +38,7 @@ class AssignCorrectorForm(forms.Form):
     """Форма для назначения корректора переводу"""
 
     corrector = forms.ModelChoiceField(
-        queryset=User.objects.filter(role="corrector").order_by(
-            "first_name", "last_name"
-        ),
+        queryset=User.objects.filter(role="corrector").order_by("first_name", "last_name"),
         empty_label="Выберите корректора...",
         required=False,
         label="Корректор",
@@ -50,9 +48,7 @@ class AssignCorrectorForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         # Получаем только пользователей с ролью корректора
-        correctors = User.objects.filter(role="corrector").order_by(
-            "first_name", "last_name"
-        )
+        correctors = User.objects.filter(role="corrector").order_by("first_name", "last_name")
 
         # Создаем выбор с пустым вариантом
         choices = [("", "Выберите корректора...")]
@@ -63,7 +59,9 @@ class AssignCorrectorForm(forms.Form):
         self.fields["corrector"].choices = choices
         self.fields["corrector"].widget.attrs.update(
             {
-                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 "
+                "focus:outline-none focus:ring-primary-500 focus:border-primary-500 "
+                "sm:text-sm rounded-md"
             }
         )
 
@@ -87,7 +85,9 @@ class ChangeSentenceStatusForm(forms.ModelForm):
 
         self.fields["status"].widget.attrs.update(
             {
-                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                "class": "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 "
+                "focus:outline-none focus:ring-primary-500 focus:border-primary-500 "
+                "sm:text-sm rounded-md"
             }
         )
 
@@ -104,7 +104,8 @@ class CreateTranslationForm(forms.ModelForm):
 
         self.fields["translated_text"].widget = forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm",
+                "class": "mt-1 block w-full border-gray-300 rounded-md shadow-sm "
+                "focus:ring-primary-500 focus:border-primary-500 sm:text-sm",
                 "rows": 4,
                 "placeholder": "Введите перевод предложения...",
             }
@@ -125,7 +126,8 @@ class EditTranslationForm(forms.ModelForm):
 
         self.fields["translated_text"].widget = forms.Textarea(
             attrs={
-                "class": "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm",
+                "class": "mt-1 block w-full border-gray-300 rounded-md shadow-sm "
+                "focus:ring-primary-500 focus:border-primary-500 sm:text-sm",
                 "rows": 4,
                 "placeholder": "Введите перевод предложения...",
             }

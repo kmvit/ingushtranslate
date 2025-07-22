@@ -10,9 +10,7 @@ class UserForm(forms.ModelForm):
         required=False,
         help_text="Оставьте пустым, чтобы не менять пароль",
     )
-    password_confirm = forms.CharField(
-        widget=forms.PasswordInput(), required=False, help_text="Повторите пароль"
-    )
+    password_confirm = forms.CharField(widget=forms.PasswordInput(), required=False, help_text="Повторите пароль")
 
     class Meta:
         model = User
@@ -23,19 +21,16 @@ class UserForm(forms.ModelForm):
 
         # Ограничиваем выбор ролей только переводчиком и корректором
         self.fields["role"].choices = [
-            choice
-            for choice in User.ROLE_CHOICES
-            if choice[0] in ["translator", "corrector"]
+            choice for choice in User.ROLE_CHOICES if choice[0] in ["translator", "corrector"]
         ]
 
         # Добавляем CSS классы ко всем полям
-        css_class = "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+        css_class = "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm "
+        css_class += "focus:outline-none focus:ring-primary-500 focus:border-primary-500"
 
         for field_name, field in self.fields.items():
             if field_name == "password" or field_name == "password_confirm":
-                field.widget.attrs.update(
-                    {"class": css_class, "placeholder": field.help_text}
-                )
+                field.widget.attrs.update({"class": css_class, "placeholder": field.help_text})
             else:
                 field.widget.attrs.update({"class": css_class})
 
@@ -43,12 +38,8 @@ class UserForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields["username"].widget.attrs["readonly"] = True
             self.fields["username"].widget.attrs["class"] = css_class + " bg-gray-100"
-            self.fields["password"].help_text = (
-                "Оставьте пустым, чтобы не менять пароль"
-            )
-            self.fields["password_confirm"].help_text = (
-                "Оставьте пустым, чтобы не менять пароль"
-            )
+            self.fields["password"].help_text = "Оставьте пустым, чтобы не менять пароль"
+            self.fields["password_confirm"].help_text = "Оставьте пустым, чтобы не менять пароль"
         else:
             # Для новых пользователей пароль обязателен
             self.fields["password"].required = True

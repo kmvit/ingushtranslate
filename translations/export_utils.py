@@ -32,12 +32,15 @@ def export_to_txt(document: Document, output_path: str) -> str:
             if sentence.has_translation:
                 translation = sentence.translation
                 file.write(f"Перевод: {translation.translated_text}\n")
-                file.write(
-                    f"Статус: {'Одобрен' if translation.status == 'approved' else 'Отклонен' if translation.status == 'rejected' else 'На проверке'}\n"
+                status_text = (
+                    "Одобрен"
+                    if translation.status == "approved"
+                    else "Отклонен" if translation.status == "rejected"
+                    else "На проверке"
                 )
+                file.write(f"Статус: {status_text}\n")
             else:
                 file.write("Перевод: Не переведено\n")
-
             file.write("-" * 30 + "\n\n")
 
     return output_path
@@ -141,11 +144,7 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
             sheet.cell(
                 row=row,
                 column=8,
-                value=(
-                    translation.corrected_at.strftime("%Y-%m-%d %H:%M")
-                    if translation.corrected_at
-                    else ""
-                ),
+                value=(translation.corrected_at.strftime("%Y-%m-%d %H:%M") if translation.corrected_at else ""),
             )
         else:
             sheet.cell(row=row, column=3, value="Не переведено")
@@ -237,12 +236,8 @@ def get_document_statistics(document: Document) -> Dict:
     """
     total_sentences = document.sentences.count()
     translated_sentences = document.sentences.filter(translation__isnull=False).count()
-    approved_sentences = document.sentences.filter(
-        translation__status="approved"
-    ).count()
-    rejected_sentences = document.sentences.filter(
-        translation__status="rejected"
-    ).count()
+    approved_sentences = document.sentences.filter(translation__status="approved").count()
+    rejected_sentences = document.sentences.filter(translation__status="rejected").count()
     pending_sentences = document.sentences.filter(translation__status="pending").count()
 
     # Статистика по словам и знакам в предложениях
@@ -278,24 +273,16 @@ def get_document_statistics(document: Document) -> Dict:
             total_translated_characters += len(sentence.translation.translated_text)
 
             # Подсчет символов без пробелов в переводе
-            total_translated_characters_without_spaces += len(
-                sentence.translation.translated_text.replace(" ", "")
-            )
+            total_translated_characters_without_spaces += len(sentence.translation.translated_text.replace(" ", ""))
 
     # Средние показатели
-    average_words_per_sentence = (
-        total_words / total_sentences if total_sentences > 0 else 0
-    )
-    average_characters_per_sentence = (
-        total_characters / total_sentences if total_sentences > 0 else 0
-    )
+    average_words_per_sentence = total_words / total_sentences if total_sentences > 0 else 0
+    average_characters_per_sentence = total_characters / total_sentences if total_sentences > 0 else 0
     average_translated_words_per_translation = (
         total_translated_words / translated_sentences if translated_sentences > 0 else 0
     )
     average_translated_characters_per_translation = (
-        total_translated_characters / translated_sentences
-        if translated_sentences > 0
-        else 0
+        total_translated_characters / translated_sentences if translated_sentences > 0 else 0
     )
 
     return {
@@ -312,18 +299,10 @@ def get_document_statistics(document: Document) -> Dict:
         "total_translated_characters_without_spaces": total_translated_characters_without_spaces,
         "average_words_per_sentence": round(average_words_per_sentence, 1),
         "average_characters_per_sentence": round(average_characters_per_sentence, 1),
-        "average_translated_words_per_translation": round(
-            average_translated_words_per_translation, 1
-        ),
-        "average_translated_characters_per_translation": round(
-            average_translated_characters_per_translation, 1
-        ),
+        "average_translated_words_per_translation": round(average_translated_words_per_translation, 1),
+        "average_translated_characters_per_translation": round(average_translated_characters_per_translation, 1),
         "completion_percentage": round(
-            (
-                (translated_sentences / total_sentences * 100)
-                if total_sentences > 0
-                else 0
-            ),
+            ((translated_sentences / total_sentences * 100) if total_sentences > 0 else 0),
             2,
         ),
         "approval_percentage": round(
@@ -357,9 +336,7 @@ def export_sentences_to_csv(queryset):
                 smart_str(s.original_text),
                 s.get_status_display(),
                 smart_str(s.assigned_to.get_full_name() if s.assigned_to else ""),
-                smart_str(
-                    s.translation.translated_text if hasattr(s, "translation") else ""
-                ),
+                smart_str(s.translation.translated_text if hasattr(s, "translation") else ""),
                 s.created_at.strftime("%d.%m.%Y %H:%M"),
                 s.updated_at.strftime("%d.%m.%Y %H:%M"),
             ]
@@ -367,9 +344,7 @@ def export_sentences_to_csv(queryset):
     return response
 
 
-def export_user_report_to_xlsx(
-    user_obj, user_stats, context_data, output_path: str
-) -> str:
+def export_user_report_to_xlsx(user_obj, user_stats, context_data, output_path: str) -> str:
     """
     Экспортирует отчет по пользователю в XLSX файл
     """
@@ -396,11 +371,7 @@ def export_user_report_to_xlsx(
             ("Дата регистрации", user_obj.date_joined.strftime("%d.%m.%Y %H:%M")),
             (
                 "Последний вход",
-                (
-                    user_obj.last_login.strftime("%d.%m.%Y %H:%M")
-                    if user_obj.last_login
-                    else "Никогда"
-                ),
+                (user_obj.last_login.strftime("%d.%m.%Y %H:%M") if user_obj.last_login else "Никогда"),
             ),
         ]
         for row, (label, value) in enumerate(user_info, 4):
@@ -468,9 +439,7 @@ def export_user_report_to_xlsx(
         for col, header in enumerate(headers, 1):
             cell = stats_sheet.cell(row=3, column=col, value=header)
             cell.font = openpyxl.styles.Font(bold=True)
-            cell.fill = openpyxl.styles.PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
+            cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
         if user_stats:
             # Основные данные
             row = 4
@@ -483,17 +452,13 @@ def export_user_report_to_xlsx(
                 type_name = "Загруженные документы"
             stats_sheet.cell(row=row, column=1, value=type_name)
             stats_sheet.cell(row=row, column=2, value=user_stats.get("total_words", 0))
-            stats_sheet.cell(
-                row=row, column=3, value=user_stats.get("total_sentences", 0)
-            )
+            stats_sheet.cell(row=row, column=3, value=user_stats.get("total_sentences", 0))
             stats_sheet.cell(
                 row=row,
                 column=4,
                 value=user_stats.get("total_characters_without_spaces", 0),
             )
-            stats_sheet.cell(
-                row=row, column=5, value=user_stats.get("total_characters", 0)
-            )
+            stats_sheet.cell(row=row, column=5, value=user_stats.get("total_characters", 0))
             # Данные по переводам (если есть)
             if user_stats.get("translated_sentences", 0) > 0:
                 row += 1
@@ -504,18 +469,12 @@ def export_user_report_to_xlsx(
                 else:
                     type_name = "Переведенные предложения"
                 stats_sheet.cell(row=row, column=1, value=type_name)
-                stats_sheet.cell(
-                    row=row, column=2, value=user_stats.get("total_translated_words", 0)
-                )
-                stats_sheet.cell(
-                    row=row, column=3, value=user_stats.get("translated_sentences", 0)
-                )
+                stats_sheet.cell(row=row, column=2, value=user_stats.get("total_translated_words", 0))
+                stats_sheet.cell(row=row, column=3, value=user_stats.get("translated_sentences", 0))
                 stats_sheet.cell(
                     row=row,
                     column=4,
-                    value=user_stats.get(
-                        "total_translated_characters_without_spaces", 0
-                    ),
+                    value=user_stats.get("total_translated_characters_without_spaces", 0),
                 )
                 stats_sheet.cell(
                     row=row,
@@ -530,9 +489,7 @@ def export_user_report_to_xlsx(
         activity_title_cell.value = "Последние активности"
         activity_title_cell.font = openpyxl.styles.Font(size=16, bold=True)
         activity_title_cell.alignment = openpyxl.styles.Alignment(horizontal="center")
-        if user_obj.role in ["admin", "representative"] and context_data.get(
-            "user_documents"
-        ):
+        if user_obj.role in ["admin", "representative"] and context_data.get("user_documents"):
             # Последние документы
             activity_sheet["A3"] = "Последние документы"
             activity_sheet["A3"].font = openpyxl.styles.Font(size=14, bold=True)
@@ -540,9 +497,7 @@ def export_user_report_to_xlsx(
             for col, header in enumerate(doc_headers, 1):
                 cell = activity_sheet.cell(row=5, column=col, value=header)
                 cell.font = openpyxl.styles.Font(bold=True)
-                cell.fill = openpyxl.styles.PatternFill(
-                    start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-                )
+                cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
             for row, document in enumerate(context_data["user_documents"][:5], 6):
                 activity_sheet.cell(row=row, column=1, value=document.title)
                 activity_sheet.cell(
@@ -559,15 +514,9 @@ def export_user_report_to_xlsx(
                 for col, header in enumerate(trans_headers, 1):
                     cell = activity_sheet.cell(row=5, column=col, value=header)
                     cell.font = openpyxl.styles.Font(bold=True)
-                    cell.fill = openpyxl.styles.PatternFill(
-                        start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-                    )
-                for row, translation in enumerate(
-                    context_data["user_translations"][:5], 6
-                ):
-                    activity_sheet.cell(
-                        row=row, column=1, value=translation.sentence.document.title
-                    )
+                    cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                for row, translation in enumerate(context_data["user_translations"][:5], 6):
+                    activity_sheet.cell(row=row, column=1, value=translation.sentence.document.title)
                     activity_sheet.cell(
                         row=row,
                         column=2,
@@ -610,15 +559,9 @@ def export_user_report_to_xlsx(
                 for col, header in enumerate(corr_headers, 1):
                     cell = activity_sheet.cell(row=5, column=col, value=header)
                     cell.font = openpyxl.styles.Font(bold=True)
-                    cell.fill = openpyxl.styles.PatternFill(
-                        start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-                    )
-                for row, correction in enumerate(
-                    context_data["user_corrections"][:5], 6
-                ):
-                    activity_sheet.cell(
-                        row=row, column=1, value=correction.sentence.document.title
-                    )
+                    cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                for row, correction in enumerate(context_data["user_corrections"][:5], 6):
+                    activity_sheet.cell(row=row, column=1, value=correction.sentence.document.title)
                     activity_sheet.cell(
                         row=row,
                         column=2,
@@ -715,9 +658,7 @@ def export_user_report_to_xlsx(
         for col, header in enumerate(headers, 1):
             cell = sentences_sheet.cell(row=3, column=col, value=header)
             cell.font = openpyxl.styles.Font(bold=True)
-            cell.fill = openpyxl.styles.PatternFill(
-                start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-            )
+            cell.fill = openpyxl.styles.PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
 
         # Данные предложений
         row = 4
@@ -731,9 +672,7 @@ def export_user_report_to_xlsx(
 
                 # Перевод
                 if hasattr(sentence, "translation") and sentence.translation:
-                    sentences_sheet.cell(
-                        row=row, column=4, value=sentence.translation.translated_text
-                    )
+                    sentences_sheet.cell(row=row, column=4, value=sentence.translation.translated_text)
                     status_map = {
                         "approved": "Утверждено",
                         "rejected": "Отклонено",
@@ -742,16 +681,12 @@ def export_user_report_to_xlsx(
                     sentences_sheet.cell(
                         row=row,
                         column=5,
-                        value=status_map.get(
-                            sentence.translation.status, sentence.translation.status
-                        ),
+                        value=status_map.get(sentence.translation.status, sentence.translation.status),
                     )
                     sentences_sheet.cell(
                         row=row,
                         column=6,
-                        value=sentence.translation.translated_at.strftime(
-                            "%d.%m.%Y %H:%M"
-                        ),
+                        value=sentence.translation.translated_at.strftime("%d.%m.%Y %H:%M"),
                     )
                 else:
                     sentences_sheet.cell(row=row, column=4, value="Не переведено")
@@ -767,9 +702,7 @@ def export_user_report_to_xlsx(
                 sentences_sheet.cell(row=row, column=1, value=sentence.document.title)
                 sentences_sheet.cell(row=row, column=2, value=sentence.sentence_number)
                 sentences_sheet.cell(row=row, column=3, value=sentence.original_text)
-                sentences_sheet.cell(
-                    row=row, column=4, value=correction.translated_text
-                )
+                sentences_sheet.cell(row=row, column=4, value=correction.translated_text)
 
                 status_map = {
                     "approved": "Утверждено",
@@ -798,12 +731,8 @@ def export_user_report_to_xlsx(
             for document in user_documents:
                 for sentence in document.sentences.all():
                     sentences_sheet.cell(row=row, column=1, value=document.title)
-                    sentences_sheet.cell(
-                        row=row, column=2, value=sentence.sentence_number
-                    )
-                    sentences_sheet.cell(
-                        row=row, column=3, value=sentence.original_text
-                    )
+                    sentences_sheet.cell(row=row, column=2, value=sentence.sentence_number)
+                    sentences_sheet.cell(row=row, column=3, value=sentence.original_text)
 
                     # Перевод
                     if hasattr(sentence, "translation") and sentence.translation:
@@ -820,16 +749,12 @@ def export_user_report_to_xlsx(
                         sentences_sheet.cell(
                             row=row,
                             column=5,
-                            value=status_map.get(
-                                sentence.translation.status, sentence.translation.status
-                            ),
+                            value=status_map.get(sentence.translation.status, sentence.translation.status),
                         )
                         sentences_sheet.cell(
                             row=row,
                             column=6,
-                            value=sentence.translation.translated_at.strftime(
-                                "%d.%m.%Y %H:%M"
-                            ),
+                            value=sentence.translation.translated_at.strftime("%d.%m.%Y %H:%M"),
                         )
                     else:
                         sentences_sheet.cell(row=row, column=4, value="Не переведено")
@@ -844,9 +769,7 @@ def export_user_report_to_xlsx(
         raise
 
 
-def export_user_report(
-    user_obj, user_stats, context_data, format_type: str = "xlsx"
-) -> str:
+def export_user_report(user_obj, user_stats, context_data, format_type: str = "xlsx") -> str:
     """
     Основная функция для экспорта отчета по пользователю
     """
@@ -860,9 +783,7 @@ def export_user_report(
 
         if format_type == "xlsx":
             output_path = os.path.join(export_dir, f"{base_name}.xlsx")
-            return export_user_report_to_xlsx(
-                user_obj, user_stats, context_data, output_path
-            )
+            return export_user_report_to_xlsx(user_obj, user_stats, context_data, output_path)
         else:
             raise ValueError(f"Неподдерживаемый формат экспорта: {format_type}")
     except Exception as e:

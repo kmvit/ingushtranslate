@@ -45,20 +45,12 @@ class DashboardView(LoginRequiredMixin, AdminOrRepresentativeMixin, TemplateView
         context["total_translations"] = Translation.objects.count()
 
         # Статистика по статусам переводов
-        context["approved_translations"] = Translation.objects.filter(
-            status="approved"
-        ).count()
-        context["rejected_translations"] = Translation.objects.filter(
-            status="rejected"
-        ).count()
-        context["pending_translations"] = Translation.objects.filter(
-            status="pending"
-        ).count()
+        context["approved_translations"] = Translation.objects.filter(status="approved").count()
+        context["rejected_translations"] = Translation.objects.filter(status="rejected").count()
+        context["pending_translations"] = Translation.objects.filter(status="pending").count()
 
         # Статистика по ролям пользователей
-        context["users_by_role"] = User.objects.values("role").annotate(
-            count=Count("id")
-        )
+        context["users_by_role"] = User.objects.values("role").annotate(count=Count("id"))
 
         # Последние документы
         context["recent_documents"] = Document.objects.order_by("-uploaded_at")[:5]
@@ -110,9 +102,7 @@ class UserListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
         context["role_filter"] = self.request.GET.get("role", "")
         context["sort_by"] = self.request.GET.get("sort", "first_name")
         # Исключаем администраторов из списка ролей для фильтрации
-        context["role_choices"] = [
-            choice for choice in User.ROLE_CHOICES if choice[0] != "admin"
-        ]
+        context["role_choices"] = [choice for choice in User.ROLE_CHOICES if choice[0] != "admin"]
         return context
 
 
@@ -149,9 +139,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                 total_characters += len(sentence.original_text)
 
                 # Подсчет символов без пробелов
-                total_characters_without_spaces += len(
-                    sentence.original_text.replace(" ", "")
-                )
+                total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
 
             # Статистика по переводам
             total_translated_words = 0
@@ -168,9 +156,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                     total_translated_characters += len(translation.translated_text)
 
                     # Подсчет символов без пробелов в переводе
-                    total_translated_characters_without_spaces += len(
-                        translation.translated_text.replace(" ", "")
-                    )
+                    total_translated_characters_without_spaces += len(translation.translated_text.replace(" ", ""))
 
             stats = {
                 "total_sentences": assigned_sentences.count(),
@@ -202,9 +188,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                 total_characters += len(sentence.original_text)
 
                 # Подсчет символов без пробелов
-                total_characters_without_spaces += len(
-                    sentence.original_text.replace(" ", "")
-                )
+                total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
 
             # Статистика по переводам
             total_translated_words = 0
@@ -221,9 +205,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                     total_translated_characters += len(correction.translated_text)
 
                     # Подсчет символов без пробелов в переводе
-                    total_translated_characters_without_spaces += len(
-                        correction.translated_text.replace(" ", "")
-                    )
+                    total_translated_characters_without_spaces += len(correction.translated_text.replace(" ", ""))
 
             stats = {
                 "total_sentences": user_corrections.count(),
@@ -255,9 +237,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                     total_characters += len(sentence.original_text)
 
                     # Подсчет символов без пробелов
-                    total_characters_without_spaces += len(
-                        sentence.original_text.replace(" ", "")
-                    )
+                    total_characters_without_spaces += len(sentence.original_text.replace(" ", ""))
 
             # Статистика по переводам в загруженных документах
             total_translated_words = 0
@@ -272,9 +252,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
                         total_translated_words += len(translated_words)
 
                         # Подсчет символов в переводе
-                        total_translated_characters += len(
-                            sentence.translation.translated_text
-                        )
+                        total_translated_characters += len(sentence.translation.translated_text)
 
                         # Подсчет символов без пробелов в переводе
                         total_translated_characters_without_spaces += len(
@@ -283,8 +261,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
 
             total_sentences = sum(doc.sentences.count() for doc in user_documents)
             translated_sentences = sum(
-                doc.sentences.filter(translation__isnull=False).count()
-                for doc in user_documents
+                doc.sentences.filter(translation__isnull=False).count() for doc in user_documents
             )
 
             stats = {
@@ -308,9 +285,7 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
         context["user_documents"] = Document.objects.filter(uploaded_by=user_obj)
         context["user_sentences"] = Sentence.objects.filter(assigned_to=user_obj)
         context["user_translations"] = Translation.objects.filter(translator=user_obj)
-        context["user_corrections"] = Translation.objects.filter(
-            sentence__corrector=user_obj
-        )
+        context["user_corrections"] = Translation.objects.filter(sentence__corrector=user_obj)
 
         # Статистика по статусам переводов
         user_translations = context["user_translations"]
@@ -321,15 +296,9 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
 
         # Вычисление процентов
         if total_translations > 0:
-            context["approved_percentage"] = round(
-                (context["approved_count"] / total_translations) * 100
-            )
-            context["rejected_percentage"] = round(
-                (context["rejected_count"] / total_translations) * 100
-            )
-            context["pending_percentage"] = round(
-                (context["pending_count"] / total_translations) * 100
-            )
+            context["approved_percentage"] = round((context["approved_count"] / total_translations) * 100)
+            context["rejected_percentage"] = round((context["rejected_count"] / total_translations) * 100)
+            context["pending_percentage"] = round((context["pending_count"] / total_translations) * 100)
         else:
             context["approved_percentage"] = 0
             context["rejected_percentage"] = 0
@@ -353,28 +322,18 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
             assigned_sentences = Sentence.objects.filter(assigned_to=user_obj)
             context["total_assigned"] = assigned_sentences.count()
             context["pending_sentences"] = assigned_sentences.filter(status=0).count()
-            context["in_progress_sentences"] = assigned_sentences.filter(
-                status=0
-            ).count()
-            context["translated_sentences"] = assigned_sentences.filter(
-                status=1
-            ).count()
+            context["in_progress_sentences"] = assigned_sentences.filter(status=0).count()
+            context["translated_sentences"] = assigned_sentences.filter(status=1).count()
             context["completed_sentences"] = assigned_sentences.filter(status=2).count()
             context["total_completed"] = context["completed_sentences"]
             context["total_translated"] = context["translated_sentences"]
-            context["total_rejected"] = user_translations.filter(
-                status="rejected"
-            ).count()
+            context["total_rejected"] = user_translations.filter(status="rejected").count()
 
         # Дополнительная статистика для корректоров
         if user_obj.role == "corrector":
             # Переводы, которые нужно проверить (статус pending) и назначены этому корректору
             pending_corrections = Translation.objects.filter(
-                Q(status="pending")
-                & (
-                    Q(sentence__corrector=user_obj)
-                    | Q(sentence__corrector__isnull=True)
-                )
+                Q(status="pending") & (Q(sentence__corrector=user_obj) | Q(sentence__corrector__isnull=True))
             )
 
             # Переводы, которые уже проверены этим корректором
@@ -387,12 +346,8 @@ class UserDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView)
             context["completed_corrections"] = completed_corrections
 
             # Обновляем статистику по статусам для корректора
-            context["approved_count"] = completed_corrections.filter(
-                status="approved"
-            ).count()
-            context["rejected_count"] = completed_corrections.filter(
-                status="rejected"
-            ).count()
+            context["approved_count"] = completed_corrections.filter(status="approved").count()
+            context["rejected_count"] = completed_corrections.filter(status="rejected").count()
 
         # Добавляем статистику по словам и символам
         context["user_stats"] = self.get_user_statistics(user_obj)
@@ -418,9 +373,7 @@ class UserCreateView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         if form.is_valid():
             try:
                 user = form.save()
-                messages.success(
-                    request, f"Пользователь {user.get_full_name()} успешно создан."
-                )
+                messages.success(request, f"Пользователь {user.get_full_name()} успешно создан.")
                 return redirect("dashboards:user_detail", user_id=user.id)
             except Exception as e:
                 messages.error(request, f"Ошибка при создании пользователя: {str(e)}")
@@ -455,9 +408,7 @@ class UserEditView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         if form.is_valid():
             try:
                 user = form.save()
-                messages.success(
-                    request, f"Пользователь {user.get_full_name()} успешно обновлен."
-                )
+                messages.success(request, f"Пользователь {user.get_full_name()} успешно обновлен.")
                 return redirect("dashboards:user_detail", user_id=user.id)
             except Exception as e:
                 messages.error(request, f"Ошибка при обновлении пользователя: {str(e)}")
@@ -504,21 +455,13 @@ class UserStatisticsView(LoginRequiredMixin, AdminOrRepresentativeMixin, Templat
         user_translations = Translation.objects.filter(translator=user)
         context["user"] = user
         context["total_translations"] = user_translations.count()
-        context["approved_translations"] = user_translations.filter(
-            status="approved"
-        ).count()
-        context["rejected_translations"] = user_translations.filter(
-            status="rejected"
-        ).count()
-        context["pending_translations"] = user_translations.filter(
-            status="pending"
-        ).count()
+        context["approved_translations"] = user_translations.filter(status="approved").count()
+        context["rejected_translations"] = user_translations.filter(status="rejected").count()
+        context["pending_translations"] = user_translations.filter(status="pending").count()
 
         # Статистика по месяцам
         context["monthly_stats"] = (
-            user_translations.extra(
-                select={"month": "EXTRACT(month FROM translated_at)"}
-            )
+            user_translations.extra(select={"month": "EXTRACT(month FROM translated_at)"})
             .values("month")
             .annotate(count=Count("id"))
             .order_by("month")
@@ -537,24 +480,16 @@ class TranslatorDashboardView(LoginRequiredMixin, TranslatorOnlyMixin, TemplateV
 
         # Получаем предложения, назначенные переводчику
         assigned_sentences = Sentence.objects.filter(assigned_to=self.request.user)
-        context["pending_sentences"] = assigned_sentences.filter(
-            status=0
-        )  # Не подтвержден
-        context["in_progress_sentences"] = assigned_sentences.filter(
-            status=0
-        )  # Предложения в работе (не переведенные)
+        context["pending_sentences"] = assigned_sentences.filter(status=0)  # Не подтвержден
+        context["in_progress_sentences"] = assigned_sentences.filter(status=0)  # Предложения в работе (не переведенные)
         context["translated_sentences"] = assigned_sentences.filter(
             status=1
         )  # Подтвердил переводчик (ожидает проверки)
-        context["completed_sentences"] = assigned_sentences.filter(
-            status=2
-        )  # Подтвердил корректор
+        context["completed_sentences"] = assigned_sentences.filter(status=2)  # Подтвердил корректор
 
         # Получаем переводы пользователя
         user_translations = Translation.objects.filter(translator=self.request.user)
-        context["recent_translations"] = user_translations.order_by("-translated_at")[
-            :5
-        ]
+        context["recent_translations"] = user_translations.order_by("-translated_at")[:5]
         context["total_assigned"] = assigned_sentences.count()
         context["total_completed"] = context["completed_sentences"].count()
         context["total_translated"] = context["translated_sentences"].count()
@@ -585,21 +520,14 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         context["in_review_translations"] = (
             Translation.objects.filter(translated_text__isnull=False)
             .exclude(translated_text="")
-            .filter(
-                Q(sentence__corrector=self.request.user)
-                | Q(sentence__corrector__isnull=True)
-            )
+            .filter(Q(sentence__corrector=self.request.user) | Q(sentence__corrector__isnull=True))
             .select_related("sentence__document", "translator")
             .order_by("-translated_at")
         )
 
         # Получаем переводы, которые нужно проверить (статус pending) и назначены этому корректору
         context["pending_corrections"] = Translation.objects.filter(
-            Q(status="pending")
-            & (
-                Q(sentence__corrector=self.request.user)
-                | Q(sentence__corrector__isnull=True)
-            )
+            Q(status="pending") & (Q(sentence__corrector=self.request.user) | Q(sentence__corrector__isnull=True))
         )
 
         # Получаем переводы, которые уже проверены этим корректором
@@ -610,12 +538,8 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
 
         # Статистика корректора
         context["total_reviewed"] = completed_corrections.count()
-        context["approved_count"] = completed_corrections.filter(
-            status="approved"
-        ).count()
-        context["rejected_count"] = completed_corrections.filter(
-            status="rejected"
-        ).count()
+        context["approved_count"] = completed_corrections.filter(status="approved").count()
+        context["rejected_count"] = completed_corrections.filter(status="rejected").count()
         context["pending_count"] = context["pending_corrections"].count()
 
         # Если нет переводов для проверки, показываем сообщение
@@ -653,9 +577,7 @@ class UserExportReportView(LoginRequiredMixin, AdminOrRepresentativeMixin, View)
                     f.read(),
                     content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
-                response["Content-Disposition"] = (
-                    f'attachment; filename="{os.path.basename(file_path)}"'
-                )
+                response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
 
             # Удаляем временный файл
             try:

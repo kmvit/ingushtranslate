@@ -12,9 +12,7 @@ class Document(models.Model):
         validators=[FileExtensionValidator(allowed_extensions=["txt", "docx", "xlsx"])],
         verbose_name="Файл",
     )
-    uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Загрузил"
-    )
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Загрузил")
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата загрузки")
     is_processed = models.BooleanField(default=False, verbose_name="Обработан")
 
@@ -53,9 +51,7 @@ class Sentence(models.Model):
     )
     original_text = models.TextField(verbose_name="Оригинальный текст")
     sentence_number = models.PositiveIntegerField(verbose_name="Номер предложения")
-    status = models.IntegerField(
-        choices=STATUS_CHOICES, default=0, verbose_name="Статус"
-    )
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="Статус")
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -121,15 +117,9 @@ class Translation(models.Model):
         related_name="translations",
         verbose_name="Переводчик",
     )
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Статус"
-    )
-    translated_at = models.DateTimeField(
-        auto_now_add=True, verbose_name="Дата перевода"
-    )
-    corrected_at = models.DateTimeField(
-        null=True, blank=True, verbose_name="Дата корректировки"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Статус")
+    translated_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата перевода")
+    corrected_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата корректировки")
 
     class Meta:
         verbose_name = "Перевод"
@@ -173,9 +163,7 @@ class TranslationHistory(models.Model):
         verbose_name="Перевод",
     )
     translated_text = models.TextField(verbose_name="Текст перевода")
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Пользователь"
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Пользователь")
     action = models.CharField(
         max_length=50, verbose_name="Действие"
     )  # 'translated', 'corrected', 'approved', 'rejected'

@@ -36,9 +36,7 @@ urlpatterns = [
         views.rejected_translations,
         name="rejected_translations",
     ),
-    path(
-        "translations/pending/", views.pending_translations, name="pending_translations"
-    ),
+    path("translations/pending/", views.pending_translations, name="pending_translations"),
     path(
         "export/<int:document_id>/all/",
         views.export_document_all,

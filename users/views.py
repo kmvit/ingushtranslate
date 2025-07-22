@@ -96,14 +96,10 @@ class RegisterView(View):
                 phone=phone,
             )
 
-            messages.success(
-                request, f"Пользователь {user.get_full_name()} успешно зарегистрирован."
-            )
+            messages.success(request, f"Пользователь {user.get_full_name()} успешно зарегистрирован.")
 
             # Автоматически авторизуем пользователя
-            authenticated_user = authenticate(
-                request, username=username, password=password
-            )
+            authenticated_user = authenticate(request, username=username, password=password)
             if authenticated_user:
                 login(request, authenticated_user)
 

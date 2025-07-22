@@ -29,9 +29,7 @@ class TranslationInline(admin.TabularInline):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "translator":
-            kwargs["queryset"] = db_field.related_model.objects.filter(
-                role="translator"
-            )
+            kwargs["queryset"] = db_field.related_model.objects.filter(role="translator")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
@@ -84,12 +82,8 @@ class DocumentAdmin(admin.ModelAdmin):
             try:
                 file_path = export_document_translations(document, "txt")
                 with open(file_path, "rb") as f:
-                    response = HttpResponse(
-                        f.read(), content_type="application/octet-stream"
-                    )
-                    response["Content-Disposition"] = (
-                        f'attachment; filename="{os.path.basename(file_path)}"'
-                    )
+                    response = HttpResponse(f.read(), content_type="application/octet-stream")
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
 
                 # Удаляем временный файл
                 os.remove(file_path)
@@ -98,9 +92,7 @@ class DocumentAdmin(admin.ModelAdmin):
                 messages.error(request, f"Ошибка при экспорте: {str(e)}")
                 return redirect("admin:translations_document_changelist")
         else:
-            messages.warning(
-                request, "Пожалуйста, выберите только один документ для экспорта в TXT."
-            )
+            messages.warning(request, "Пожалуйста, выберите только один документ для экспорта в TXT.")
             return redirect("admin:translations_document_changelist")
 
     export_selected_to_txt.short_description = "Экспорт в TXT"
@@ -116,9 +108,7 @@ class DocumentAdmin(admin.ModelAdmin):
                         f.read(),
                         content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     )
-                    response["Content-Disposition"] = (
-                        f'attachment; filename="{os.path.basename(file_path)}"'
-                    )
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
 
                 # Удаляем временный файл
                 os.remove(file_path)
@@ -146,9 +136,7 @@ class DocumentAdmin(admin.ModelAdmin):
                         f.read(),
                         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
-                    response["Content-Disposition"] = (
-                        f'attachment; filename="{os.path.basename(file_path)}"'
-                    )
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
 
                 # Удаляем временный файл
                 os.remove(file_path)
@@ -173,9 +161,7 @@ class DocumentAdmin(admin.ModelAdmin):
                 file_path = export_document_all_formats(document)
                 with open(file_path, "rb") as f:
                     response = HttpResponse(f.read(), content_type="application/zip")
-                    response["Content-Disposition"] = (
-                        f'attachment; filename="{os.path.basename(file_path)}"'
-                    )
+                    response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
 
                 # Удаляем временный файл
                 os.remove(file_path)
@@ -245,9 +231,7 @@ class SentenceAdmin(admin.ModelAdmin):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "assigned_to":
-            kwargs["queryset"] = db_field.related_model.objects.filter(
-                role="translator"
-            )
+            kwargs["queryset"] = db_field.related_model.objects.filter(role="translator")
         elif db_field.name == "corrector":
             kwargs["queryset"] = db_field.related_model.objects.filter(role="corrector")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -278,9 +262,7 @@ class TranslationAdmin(admin.ModelAdmin):
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "translator":
-            kwargs["queryset"] = db_field.related_model.objects.filter(
-                role="translator"
-            )
+            kwargs["queryset"] = db_field.related_model.objects.filter(role="translator")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 

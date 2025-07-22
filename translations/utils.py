@@ -141,9 +141,7 @@ def validate_sentence(sentence: str) -> bool:
     return True
 
 
-def extract_and_validate_sentences(
-    file_path: str, file_extension: str
-) -> List[Tuple[int, str]]:
+def extract_and_validate_sentences(file_path: str, file_extension: str) -> List[Tuple[int, str]]:
     """
     Извлекает предложения из файла, валидирует их и возвращает список кортежей (номер, текст)
     """
