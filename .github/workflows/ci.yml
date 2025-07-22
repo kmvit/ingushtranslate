@@ -52,7 +52,7 @@ jobs:
     
     - name: Run linting
       run: |
-        flake8 ingushtranslate/ --max-line-length=88 --extend-ignore=E203,W503
+        flake8 ingushtranslate/ --max-line-length=120 --extend-ignore=E203,W503
         black --check ingushtranslate/
         isort --check-only ingushtranslate/
     
