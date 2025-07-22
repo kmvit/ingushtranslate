@@ -62,7 +62,6 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci
         DEBUG: False
       run: |
-        cd ingushtranslate
         python manage.py collectstatic --noinput
         python manage.py test --verbosity=2
     
