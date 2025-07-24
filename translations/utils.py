@@ -122,8 +122,8 @@ def clean_sentence(sentence: str) -> str:
     sentence = re.sub(r"\s+", " ", sentence.strip())
 
     # Убираем специальные символы в начале и конце
-    sentence = re.sub(r"^[^\wа-яёА-ЯЁ]*", "", sentence)
-    sentence = re.sub(r"[^\wа-яёА-ЯЁ]*$", "", sentence)
+    # sentence = re.sub(r"^[^\wа-яёА-ЯЁ]*", "", sentence)
+    # sentence = re.sub(r"[^\wа-яёА-ЯЁ]*$", "", sentence)
 
     return sentence
 
