@@ -8,6 +8,12 @@ from django.db import models
 class Document(models.Model):
     """Модель для загруженных документов"""
 
+    STATUS_CHOICES = [
+        ("pending", "В обработке"),
+        ("translated", "Переведен"),
+        ("corrected", "Проверен"),
+    ]
+
     file = models.FileField(
         upload_to="documents/",
         validators=[FileExtensionValidator(allowed_extensions=["txt", "docx", "xlsx"])],
@@ -16,6 +22,25 @@ class Document(models.Model):
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Загрузил")
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата загрузки")
     is_processed = models.BooleanField(default=False, verbose_name="Обработан")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Статус")
+    translator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="translated_documents",
+        verbose_name="Переводчик",
+        limit_choices_to={"role": "translator"},
+    )
+    corrector = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="corrected_documents",
+        verbose_name="Корректор",
+        limit_choices_to={"role": "corrector"},
+    )
 
     class Meta:
         verbose_name = "Документ"
@@ -32,6 +57,31 @@ class Document(models.Model):
             filename = os.path.basename(self.file.name)
             return os.path.splitext(filename)[0]
         return "Документ без файла"
+
+    def update_status(self):
+        """Автоматически обновляет статус документа на основе статуса предложений"""
+        sentences = self.sentences.all()
+        
+        if not sentences.exists():
+            return
+        
+        total_sentences = sentences.count()
+        approved_sentences = sentences.filter(status=2).count()  # Подтвердил корректор
+        translated_sentences = sentences.filter(status__in=[1, 2]).count()  # Подтвердил переводчик или корректор
+        
+        if approved_sentences == total_sentences:
+            # Все предложения утверждены корректором
+            new_status = "corrected"
+        elif translated_sentences == total_sentences:
+            # Все предложения переведены
+            new_status = "translated"
+        else:
+            # Документ еще в обработке
+            new_status = "pending"
+        
+        if self.status != new_status:
+            self.status = new_status
+            self.save(update_fields=['status'])
 
 
 class Sentence(models.Model):

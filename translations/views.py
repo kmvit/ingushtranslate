@@ -3,6 +3,7 @@ import os
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.storage import default_storage
+from django.db import models
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -36,7 +37,7 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
     paginate_by = 15
 
     def get_queryset(self):
-        queryset = Document.objects.select_related("uploaded_by").all()
+        queryset = Document.objects.select_related("uploaded_by", "translator", "corrector").prefetch_related("sentences").all()
 
         # Поиск
         search_query = self.request.GET.get("search", "")
@@ -47,12 +48,17 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
                 | Q(uploaded_by__last_name__icontains=search_query)
             )
 
-        # Фильтр по статусу обработки
-        processed_filter = self.request.GET.get("processed", "")
-        if processed_filter == "true":
-            queryset = queryset.filter(is_processed=True)
-        elif processed_filter == "false":
-            queryset = queryset.filter(is_processed=False)
+        # Фильтр по статусу документа
+        status_filter = self.request.GET.get("status", "")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # Фильтр по назначению исполнителей
+        assignment_filter = self.request.GET.get("assignment", "")
+        if assignment_filter == "unassigned":
+            queryset = queryset.filter(models.Q(translator__isnull=True) | models.Q(corrector__isnull=True))
+        elif assignment_filter == "assigned":
+            queryset = queryset.filter(translator__isnull=False, corrector__isnull=False)
 
         # Сортировка
         sort_by = self.request.GET.get("sort", "-uploaded_at")
@@ -70,8 +76,17 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["search_query"] = self.request.GET.get("search", "")
-        context["processed_filter"] = self.request.GET.get("processed", "")
+        context["status_filter"] = self.request.GET.get("status", "")
+        context["assignment_filter"] = self.request.GET.get("assignment", "")
         context["sort_by"] = self.request.GET.get("sort", "-uploaded_at")
+        
+        # Добавляем статистику по неназначенным документам
+        all_documents = Document.objects.all()
+        context["unassigned_count"] = all_documents.filter(
+            models.Q(translator__isnull=True) | models.Q(corrector__isnull=True)
+        ).count()
+        context["total_documents"] = all_documents.count()
+        
         return context
 
 
@@ -199,8 +214,9 @@ class DocumentDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailV
         context["search_query"] = search_query
 
         # Добавляем формы для массового назначения переводчиков и корректоров
-        context["assign_form"] = AssignTranslatorForm()
-        context["assign_corrector_form"] = AssignCorrectorForm()
+        # Предустанавливаем текущих исполнителей из документа
+        context["assign_form"] = AssignTranslatorForm(initial={'assigned_to': document.translator})
+        context["assign_corrector_form"] = AssignCorrectorForm(initial={'corrector': document.corrector})
 
         return context
 
@@ -233,6 +249,19 @@ class DocumentBulkAssignView(LoginRequiredMixin, AdminOrRepresentativeMixin, Vie
 
             assigned_translator_count = 0
             assigned_corrector_count = 0
+
+            # Назначаем переводчика и корректора на документ
+            document_updated = False
+            if translator and document.translator != translator:
+                document.translator = translator
+                document_updated = True
+            
+            if corrector and document.corrector != corrector:
+                document.corrector = corrector
+                document_updated = True
+            
+            if document_updated:
+                document.save()
 
             for sentence in sentences:
                 updated = False

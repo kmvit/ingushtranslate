@@ -77,3 +77,15 @@ def process_document_sentences(sender, instance, created, **kwargs):
             # В случае ошибки логируем её (в продакшене лучше использовать proper logging)
             print(f"Ошибка при обработке документа {instance.id}: {str(e)}")
             # Можно также отправить уведомление администратору
+
+
+@receiver(post_save, sender=Sentence)
+def update_document_status_on_sentence_change(sender, instance, **kwargs):
+    """Обновляет статус документа при изменении статуса предложения"""
+    instance.document.update_status()
+
+
+@receiver(post_save, sender=Translation)
+def update_document_status_on_translation_change(sender, instance, **kwargs):
+    """Обновляет статус документа при изменении перевода"""
+    instance.sentence.document.update_status()
