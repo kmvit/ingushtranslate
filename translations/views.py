@@ -61,7 +61,7 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
             queryset = queryset.filter(translator__isnull=False, corrector__isnull=False)
 
         # Сортировка
-        sort_by = self.request.GET.get("sort", "-uploaded_at")
+        sort_by = self.request.GET.get("sort", "file")
         if sort_by in [
             "file",
             "-file",
@@ -78,7 +78,7 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
         context["search_query"] = self.request.GET.get("search", "")
         context["status_filter"] = self.request.GET.get("status", "")
         context["assignment_filter"] = self.request.GET.get("assignment", "")
-        context["sort_by"] = self.request.GET.get("sort", "-uploaded_at")
+        context["sort_by"] = self.request.GET.get("sort", "file")
         
         # Добавляем статистику по неназначенным документам
         all_documents = Document.objects.all()

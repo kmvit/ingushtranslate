@@ -45,7 +45,7 @@ class Document(models.Model):
     class Meta:
         verbose_name = "Документ"
         verbose_name_plural = "Документы"
-        ordering = ["-uploaded_at"]
+        ordering = ["file"]
 
     def __str__(self):
         return os.path.basename(self.file.name) if self.file else "Документ без файла"
