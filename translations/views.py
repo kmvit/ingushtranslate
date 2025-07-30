@@ -87,6 +87,11 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
         ).count()
         context["total_documents"] = all_documents.count()
         
+        # Добавляем статистику для каждого документа
+        for document in context["page_obj"]:
+            document.translation_stats = document.get_translation_stats()
+            document.correction_stats = document.get_correction_stats()
+        
         return context
 
 

@@ -83,6 +83,37 @@ class Document(models.Model):
             self.status = new_status
             self.save(update_fields=['status'])
 
+    def get_translation_stats(self):
+        """Возвращает статистику переведенных предложений"""
+        total_sentences = self.sentences.count()
+        translated_sentences = self.sentences.filter(status__in=[1, 2]).count()  # Подтвердил переводчик или корректор
+        return {
+            'total': total_sentences,
+            'translated': translated_sentences,
+            'percentage': (translated_sentences / total_sentences * 100) if total_sentences > 0 else 0
+        }
+
+    def get_correction_stats(self):
+        """Возвращает статистику предложений на корректировке"""
+        total_sentences = self.sentences.count()
+        # Предложения на корректировке: переведены (статус 1) но не утверждены корректором
+        correction_sentences = self.sentences.filter(status=1).count()
+        return {
+            'total': total_sentences,
+            'correction': correction_sentences,
+            'percentage': (correction_sentences / total_sentences * 100) if total_sentences > 0 else 0
+        }
+
+    def get_translation_progress_text(self):
+        """Возвращает текст прогресса перевода в формате '10/150'"""
+        stats = self.get_translation_stats()
+        return f"{stats['translated']}/{stats['total']}"
+
+    def get_correction_progress_text(self):
+        """Возвращает текст прогресса корректировки в формате '5/150'"""
+        stats = self.get_correction_stats()
+        return f"{stats['correction']}/{stats['total']}"
+
 
 class Sentence(models.Model):
     """Модель для предложений из документов"""
