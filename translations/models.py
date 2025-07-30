@@ -94,10 +94,10 @@ class Document(models.Model):
         }
 
     def get_correction_stats(self):
-        """Возвращает статистику предложений на корректировке"""
+        """Возвращает статистику предложений, подтвержденных корректором"""
         total_sentences = self.sentences.count()
-        # Предложения на корректировке: переведены (статус 1) но не утверждены корректором
-        correction_sentences = self.sentences.filter(status=1).count()
+        # Предложения, подтвержденные корректором (статус 2)
+        correction_sentences = self.sentences.filter(status=2).count()
         return {
             'total': total_sentences,
             'correction': correction_sentences,
