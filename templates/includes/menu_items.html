@@ -28,8 +28,8 @@
     </a>
 {% endif %}
 
-<!-- Документы - доступны только админам и представителям -->
-{% if user.role in 'admin,representative' %}
+<!-- Документы - доступны админам, представителям, переводчикам и корректорам -->
+{% if user.role in 'admin,representative,translator,corrector' %}
 <a href="{% url 'translations:document_list' %}" class="group relative inline-flex items-center px-4 py-2 rounded-lg text-white hover:text-blue-100 transition-all duration-200 overflow-hidden">
     <div class="absolute inset-0 bg-white/10 rounded-lg transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
     <i class="fas fa-file-alt mr-2 relative z-10"></i>
@@ -37,9 +37,11 @@
 </a>
 {% endif %}
 
-<!-- Предложения - доступны всем -->
+<!-- Предложения - доступны только админам и представителям -->
+{% if user.role == 'admin' or user.role == 'representative' %}
 <a href="{% url 'translations:sentence_list' %}" class="group relative inline-flex items-center px-4 py-2 rounded-lg text-white hover:text-blue-100 transition-all duration-200 overflow-hidden">
     <div class="absolute inset-0 bg-white/10 rounded-lg transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
     <i class="fas fa-list mr-2 relative z-10"></i>
     <span class="relative z-10 font-medium text-sm">Предложения</span>
-</a> 
+</a>
+{% endif %} 

@@ -1,3 +1,4 @@
+import json
 import os
 
 from django.contrib import messages
@@ -5,12 +6,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.storage import default_storage
 from django.db import models
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, View
 
-from dashboards.mixins import AdminOrRepresentativeMixin
+from dashboards.mixins import AdminOrRepresentativeMixin, DocumentAccessMixin
 
 from .export_utils import (
     export_document_all_formats,
@@ -28,16 +29,24 @@ from .models import Document, Sentence, Translation
 from .utils import extract_and_validate_sentences
 
 
-class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
+class DocumentListView(LoginRequiredMixin, DocumentAccessMixin, ListView):
     """Список документов с поиском и фильтрацией"""
 
     model = Document
     template_name = "translations/document_list.html"
     context_object_name = "page_obj"
-    paginate_by = 15
+    paginate_by = 25
 
     def get_queryset(self):
-        queryset = Document.objects.select_related("uploaded_by", "translator", "corrector").prefetch_related("sentences").all()
+        # Для переводчиков показываем только назначенные им документы
+        if self.request.user.role == 'translator':
+            queryset = Document.objects.select_related("uploaded_by", "translator", "corrector").prefetch_related("sentences").filter(translator=self.request.user)
+        elif self.request.user.role == 'corrector':
+            # Для корректоров показываем документы, назначенные им для проверки
+            queryset = Document.objects.select_related("uploaded_by", "translator", "corrector").prefetch_related("sentences").filter(corrector=self.request.user)
+        else:
+            # Для админов и представителей показываем все документы
+            queryset = Document.objects.select_related("uploaded_by", "translator", "corrector").prefetch_related("sentences").all()
 
         # Поиск
         search_query = self.request.GET.get("search", "")
@@ -53,12 +62,13 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
-        # Фильтр по назначению исполнителей
-        assignment_filter = self.request.GET.get("assignment", "")
-        if assignment_filter == "unassigned":
-            queryset = queryset.filter(models.Q(translator__isnull=True) | models.Q(corrector__isnull=True))
-        elif assignment_filter == "assigned":
-            queryset = queryset.filter(translator__isnull=False, corrector__isnull=False)
+        # Фильтр по назначению исполнителей (только для админов и представителей)
+        if self.request.user.role in ['admin', 'representative']:
+            assignment_filter = self.request.GET.get("assignment", "")
+            if assignment_filter == "unassigned":
+                queryset = queryset.filter(models.Q(translator__isnull=True) | models.Q(corrector__isnull=True))
+            elif assignment_filter == "assigned":
+                queryset = queryset.filter(translator__isnull=False, corrector__isnull=False)
 
         # Сортировка
         sort_by = self.request.GET.get("sort", "file")
@@ -80,12 +90,23 @@ class DocumentListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView)
         context["assignment_filter"] = self.request.GET.get("assignment", "")
         context["sort_by"] = self.request.GET.get("sort", "file")
         
-        # Добавляем статистику по неназначенным документам
-        all_documents = Document.objects.all()
-        context["unassigned_count"] = all_documents.filter(
-            models.Q(translator__isnull=True) | models.Q(corrector__isnull=True)
-        ).count()
-        context["total_documents"] = all_documents.count()
+        # Добавляем статистику по неназначенным документам (только для админов и представителей)
+        if self.request.user.role in ['admin', 'representative']:
+            all_documents = Document.objects.all()
+            context["unassigned_count"] = all_documents.filter(
+                models.Q(translator__isnull=True) | models.Q(corrector__isnull=True)
+            ).count()
+            context["total_documents"] = all_documents.count()
+        elif self.request.user.role == 'translator':
+            # Для переводчиков показываем статистику только по их документам
+            translator_documents = Document.objects.filter(translator=self.request.user)
+            context["unassigned_count"] = 0  # У переводчика все документы назначены
+            context["total_documents"] = translator_documents.count()
+        elif self.request.user.role == 'corrector':
+            # Для корректоров показываем статистику только по их документам
+            corrector_documents = Document.objects.filter(corrector=self.request.user)
+            context["unassigned_count"] = 0  # У корректора все документы назначены
+            context["total_documents"] = corrector_documents.count()
         
         # Добавляем статистику для каждого документа
         for document in context["page_obj"]:
@@ -171,7 +192,7 @@ class DocumentUploadView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         return render(request, self.template_name)
 
 
-class DocumentDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailView):
+class DocumentDetailView(LoginRequiredMixin, DocumentAccessMixin, DetailView):
     """Детальная информация о документе"""
 
     model = Document
@@ -180,7 +201,15 @@ class DocumentDetailView(LoginRequiredMixin, AdminOrRepresentativeMixin, DetailV
     pk_url_kwarg = "document_id"
 
     def get_queryset(self):
-        return Document.objects.select_related("uploaded_by")
+        # Для переводчиков показываем только назначенные им документы
+        if self.request.user.role == 'translator':
+            return Document.objects.select_related("uploaded_by").filter(translator=self.request.user)
+        elif self.request.user.role == 'corrector':
+            # Для корректоров показываем документы, назначенные им для проверки
+            return Document.objects.select_related("uploaded_by").filter(corrector=self.request.user)
+        else:
+            # Для админов и представителей показываем все документы
+            return Document.objects.select_related("uploaded_by")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -333,7 +362,7 @@ class DocumentDeleteView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         return redirect("translations:document_list")
 
 
-class SentenceListView(LoginRequiredMixin, ListView):
+class SentenceListView(LoginRequiredMixin, AdminOrRepresentativeMixin, ListView):
     """Список предложений с фильтрацией - разные данные для разных ролей"""
 
     model = Sentence
@@ -739,6 +768,14 @@ class SentenceDetailView(LoginRequiredMixin, DetailView):
                         "Можно редактировать только переводы в статусе 'на проверке'.",
                     )
                     return redirect("translations:sentence_detail", sentence_id=sentence_id)
+                
+                # Проверяем, что переводчик подтвердил перевод (статус предложения = 1)
+                if sentence.status != 1:
+                    messages.error(
+                        request,
+                        "Нельзя редактировать перевод, пока переводчик не подтвердил его.",
+                    )
+                    return redirect("translations:sentence_detail", sentence_id=sentence_id)
 
             form = EditTranslationForm(request.POST, instance=sentence.translation)
 
@@ -1035,6 +1072,105 @@ def export_sentences(request):
     return export_sentences_to_csv(queryset)
 
 
+class UpdateSentenceTranslationView(LoginRequiredMixin, View):
+    """AJAX view для обновления перевода предложения"""
+    
+    def post(self, request, sentence_id):
+        try:
+            # Получаем предложение
+            sentence = get_object_or_404(Sentence, id=sentence_id)
+            
+            # Проверяем права доступа
+            if request.user.role == 'translator':
+                # Переводчик может редактировать только назначенные ему предложения
+                if sentence.assigned_to != request.user:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'У вас нет прав для редактирования этого предложения'
+                    })
+            elif request.user.role == 'corrector':
+                # Корректор может редактировать предложения из документов, где он назначен корректором
+                if sentence.document.corrector != request.user:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'У вас нет прав для редактирования этого предложения'
+                    })
+                
+                # Проверяем, что переводчик подтвердил перевод (статус предложения = 1)
+                if sentence.status != 1:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Нельзя редактировать перевод, пока переводчик не подтвердил его'
+                    })
+            elif request.user.role not in ['admin', 'representative']:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'У вас нет прав для редактирования переводов'
+                })
+            
+            # Парсим JSON данные
+            data = json.loads(request.body)
+            translated_text = data.get('translated_text', '').strip()
+            
+            if not translated_text:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Перевод не может быть пустым'
+                })
+            
+            # Создаем или обновляем перевод
+            translation, created = Translation.objects.get_or_create(
+                sentence=sentence,
+                defaults={
+                    'translated_text': translated_text,
+                    'translator': request.user if request.user.role == 'translator' else sentence.assigned_to,
+                    'corrector': request.user if request.user.role == 'corrector' else None,
+                }
+            )
+            
+            if not created:
+                # Обновляем существующий перевод
+                translation.translated_text = translated_text
+                if request.user.role == 'corrector':
+                    translation.corrector = request.user
+                    translation.corrected_at = timezone.now()
+                translation.save()
+            
+            # Если корректор редактирует, обновляем поле corrector в предложении
+            if request.user.role == 'corrector':
+                sentence.corrector = request.user
+                sentence.save()
+            
+            # Обновляем статус предложения
+            if request.user.role == 'translator':
+                sentence.status = 1  # Подтвердил переводчик
+            elif request.user.role == 'corrector':
+                sentence.status = 2  # Подтвердил корректор
+            
+            sentence.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Перевод успешно сохранен',
+                'sentence_status': sentence.status,
+                'sentence_status_display': sentence.get_status_display()
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Неверный формат данных'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Ошибка при сохранении: {str(e)}'
+            })
+
+
+
+
+
 # Переименованные представления для обратной совместимости
 document_list = DocumentListView.as_view()
 document_upload = DocumentUploadView.as_view()
@@ -1044,6 +1180,7 @@ document_delete = DocumentDeleteView.as_view()
 sentence_list = SentenceListView.as_view()
 sentence_delete = SentenceDeleteView.as_view()
 sentence_detail = SentenceDetailView.as_view()
+update_sentence_translation = UpdateSentenceTranslationView.as_view()
 translation_list = TranslationListView.as_view()
 approved_translations = ApprovedTranslationsView.as_view()
 rejected_translations = RejectedTranslationsView.as_view()

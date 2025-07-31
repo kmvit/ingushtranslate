@@ -67,3 +67,9 @@ class TranslatorOrCorrectorMixin(RoleRequiredMixin):
     """Для переводчиков и корректоров"""
 
     allowed_roles = ["translator", "corrector"]
+
+
+class DocumentAccessMixin(RoleRequiredMixin):
+    """Для доступа к документам - админы, представители, переводчики и корректоры"""
+
+    allowed_roles = ["admin", "representative", "translator", "corrector"]

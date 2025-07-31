@@ -25,6 +25,11 @@ urlpatterns = [
         views.sentence_delete,
         name="sentence_delete",
     ),
+    path(
+        "sentence/<int:sentence_id>/update_translation/",
+        views.update_sentence_translation,
+        name="update_sentence_translation",
+    ),
     path("sentences/export/", views.export_sentences, name="sentence_export"),
     path("translations/", views.translation_list, name="translation_list"),
     path(

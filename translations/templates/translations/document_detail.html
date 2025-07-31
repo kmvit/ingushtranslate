@@ -1,15 +1,21 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}{{ document.title }} - TranslateSystem{% endblock %}
+{% block title %}{% if user.role == 'translator' %}Мой документ{% else %}{{ document.title }}{% endif %} - TranslateSystem{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="space-y-6">
     <!-- Заголовок документа -->
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">{{ document.title }}</h1>
+                    {% if user.role == 'translator' %}
+                        <h1 class="text-2xl font-bold text-gray-900">Мой документ: {{ document.title }}</h1>
+                    {% else %}
+                        <h1 class="text-2xl font-bold text-gray-900">{{ document.title }}</h1>
+                    {% endif %}
                     <p class="text-sm text-gray-500 mt-1">
                         Загружен {{ document.uploaded_by.get_full_name|default:document.uploaded_by.username }} 
                         {{ document.uploaded_at|date:"d.m.Y в H:i" }}
@@ -50,11 +56,13 @@
                     </div>
                 </div>
                 <div class="flex space-x-3">
+                    {% if user.role == 'admin' or user.role == 'representative' %}
                     <a href="{% url 'translations:sentence_list' %}?document={{ document.id }}" 
                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                         <i class="fas fa-list mr-2"></i>
                         Все предложения
                     </a>
+                    {% endif %}
                     <div class="relative">
                         <button type="button" onclick="toggleExportMenu()" 
                                 class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
@@ -287,48 +295,34 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             №
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                            Статус
-                        </th>
+                        {% if user.role == 'admin' or user.role == 'representative' %}
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             Переводчик
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             Корректор
                         </th>
+                        {% endif %}
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             Оригинальный текст
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
                             Перевод
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            Статус
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for sentence in page_obj %}
-                    <tr class="hover:bg-gray-50 cursor-pointer" data-href="{% url 'translations:sentence_detail' sentence.id %}">
+                    <tr class="hover:bg-gray-50" data-sentence-id="{{ sentence.id }}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {{ sentence.sentence_number }}
+                            <a href="{% url 'translations:sentence_detail' sentence.id %}" class="text-primary-600 hover:text-primary-800 hover:underline">
+                                {{ sentence.sentence_number }}
+                            </a>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if sentence.status == 0 %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    <i class="fas fa-minus mr-1"></i>Не подтвержден
-                                </span>
-                            {% elif sentence.status == 1 %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    <i class="fas fa-user-check mr-1"></i>Подтвердил переводчик
-                                </span>
-                            {% elif sentence.status == 2 %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <i class="fas fa-check mr-1"></i>Подтвердил корректор
-                                </span>
-                            {% elif sentence.status == 3 %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    <i class="fas fa-times mr-1"></i>Отклонено корректором
-                                </span>
-                            {% endif %}
-                        </td>
+                        {% if user.role == 'admin' or user.role == 'representative' %}
                         <td class="px-6 py-4 whitespace-nowrap">
                             {% if sentence.assigned_to %}
                                 <div class="text-sm text-gray-900">
@@ -353,30 +347,104 @@
                                 <span class="text-sm text-gray-500">Не назначено</span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 align-top">
-                            <div class="max-w-md">
+                        {% endif %}
+                        <td class="px-6 py-4 text-sm text-gray-900 align-top w-1/3">
+                            <div class="max-w-full">
                                 {{ sentence.original_text }}
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 align-top">
-                            {% if sentence.translation %}
-                                <div class="max-w-md">
-                                    <div class="mb-2">{{ sentence.translation.translated_text }}</div>
-                                    <div class="text-xs text-gray-500">
-                                        <div>Переводчик: {{ sentence.translation.translator.get_full_name|default:sentence.translation.translator.username }}</div>
-                                        {% if sentence.translation.corrector %}
-                                            <div>Корректор: {{ sentence.translation.corrector.get_full_name|default:sentence.translation.corrector.username }}</div>
+                        <td class="px-6 py-4 text-sm text-gray-900 align-top w-1/3">
+                            {% if user.role == 'translator' %}
+                                <!-- Редактируемое поле для переводчиков -->
+                                <div class="max-w-full">
+                                    <div class="mb-2">
+                                        <textarea 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm resize-none"
+                                            rows="3"
+                                            data-sentence-id="{{ sentence.id }}"
+                                            placeholder="Введите перевод..."
+                                        >{% if sentence.translation %}{{ sentence.translation.translated_text }}{% endif %}</textarea>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <button 
+                                            type="button" 
+                                            class="save-translation-btn inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                            data-sentence-id="{{ sentence.id }}"
+                                            style="display: none;">
+                                            <i class="fas fa-save mr-1"></i>
+                                            Сохранить
+                                        </button>
+                                    </div>
+                                </div>
+                            {% elif user.role == 'corrector' %}
+                                <!-- Поле для корректора - активно только если переводчик подтвердил -->
+                                <div class="max-w-full">
+                                    <div class="mb-2">
+                                        <textarea 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm resize-none {% if sentence.status != 1 %}bg-gray-100 cursor-not-allowed{% endif %}"
+                                            rows="3"
+                                            data-sentence-id="{{ sentence.id }}"
+                                            placeholder="{% if sentence.status != 1 %}Переводчик еще не подтвердил перевод{% else %}Введите перевод...{% endif %}"
+                                            {% if sentence.status != 1 %}disabled{% endif %}
+                                        >{% if sentence.translation %}{{ sentence.translation.translated_text }}{% endif %}</textarea>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <button 
+                                            type="button" 
+                                            class="save-translation-btn inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 {% if sentence.status != 1 %}opacity-50 cursor-not-allowed{% endif %}"
+                                            data-sentence-id="{{ sentence.id }}"
+                                            {% if sentence.status != 1 %}disabled{% endif %}
+                                            style="display: none;">
+                                            <i class="fas fa-save mr-1"></i>
+                                            Сохранить
+                                        </button>
+                                        {% if sentence.status != 1 %}
+                                            <div class="text-xs text-gray-500 italic">
+                                                Ожидание подтверждения переводчика
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
                             {% else %}
-                                <div class="text-gray-400 italic">Перевод отсутствует</div>
+                                <!-- Только для просмотра для админов и представителей -->
+                                {% if sentence.translation %}
+                                    <div class="max-w-full">
+                                        <div class="mb-2">{{ sentence.translation.translated_text }}</div>
+                                        <div class="text-xs text-gray-500">
+                                            <div>Переводчик: {{ sentence.translation.translator.get_full_name|default:sentence.translation.translator.username }}</div>
+                                            {% if sentence.translation.corrector %}
+                                                <div>Корректор: {{ sentence.translation.corrector.get_full_name|default:sentence.translation.corrector.username }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="text-gray-400 italic">Перевод отсутствует</div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap status-cell">
+                            {% if sentence.status == 0 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <i class="fas fa-minus mr-1"></i>Не подтвержден
+                                </span>
+                            {% elif sentence.status == 1 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <i class="fas fa-user-check mr-1"></i>Подтвердил переводчик
+                                </span>
+                            {% elif sentence.status == 2 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-check mr-1"></i>Подтвердил корректор
+                                </span>
+                            {% elif sentence.status == 3 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <i class="fas fa-times mr-1"></i>Отклонено корректором
+                                </span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="{% if user.role == 'admin' or user.role == 'representative' %}6{% else %}4{% endif %}" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center">
                                 <i class="fas fa-inbox text-4xl mb-4 text-gray-300"></i>
                                 <p class="text-lg font-medium">Предложения не найдены</p>
@@ -451,53 +519,8 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
 
-<script>
-function toggleExportMenu() {
-    const menu = document.getElementById('exportMenu');
-    menu.classList.toggle('hidden');
-}
-
-// Закрыть меню при клике вне его
-document.addEventListener('click', function(event) {
-    const menu = document.getElementById('exportMenu');
-    const button = event.target.closest('button');
-    if (!button || !button.onclick) {
-        menu.classList.add('hidden');
-    }
-});
-
-// Обработка кликов по строкам таблицы
-document.addEventListener('DOMContentLoaded', function() {
-    const tableRows = document.querySelectorAll('tr[data-href]');
-    tableRows.forEach(function(row) {
-        row.addEventListener('click', function() {
-            const href = this.getAttribute('data-href');
-            if (href) {
-                window.location.href = href;
-            }
-        });
-    });
-    
-    // Установка ширины прогресс-баров с анимацией
-    setTimeout(function() {
-        const translateProgressBar = document.querySelector('.progress-bar-translate');
-        const correctProgressBar = document.querySelector('.progress-bar-correct');
-        
-        if (translateProgressBar) {
-            const completionPercentage = parseFloat(translateProgressBar.getAttribute('data-percentage'));
-            // Минимальная видимая ширина для очень маленьких процентов
-            const minWidth = completionPercentage > 0 && completionPercentage < 1 ? 1 : completionPercentage;
-            translateProgressBar.style.width = minWidth + '%';
-        }
-        
-        if (correctProgressBar) {
-            const approvalPercentage = parseFloat(correctProgressBar.getAttribute('data-percentage'));
-            // Минимальная видимая ширина для очень маленьких процентов
-            const minWidth = approvalPercentage > 0 && approvalPercentage < 1 ? 1 : approvalPercentage;
-            correctProgressBar.style.width = minWidth + '%';
-        }
-    }, 100);
-});
-</script>
+{% block extra_js %}
+<script src="{% static 'js/custom.js' %}"></script>
 {% endblock %} 

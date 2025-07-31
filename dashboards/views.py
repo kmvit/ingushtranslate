@@ -483,12 +483,12 @@ class TranslatorDashboardView(LoginRequiredMixin, TranslatorOnlyMixin, TemplateV
 
         # Получаем предложения, назначенные переводчику
         assigned_sentences = Sentence.objects.filter(assigned_to=self.request.user)
-        context["pending_sentences"] = assigned_sentences.filter(status=0)  # Не подтвержден
-        context["in_progress_sentences"] = assigned_sentences.filter(status=0)  # Предложения в работе (не переведенные)
+        context["pending_sentences"] = assigned_sentences.filter(status=0)[:3]  # Не подтвержден
+        context["in_progress_sentences"] = assigned_sentences.filter(status=0)[:3]  # Предложения в работе (не переведенные)
         context["translated_sentences"] = assigned_sentences.filter(
             status=1
-        )  # Подтвердил переводчик (ожидает проверки)
-        context["completed_sentences"] = assigned_sentences.filter(status=2)  # Подтвердил корректор
+        )[:3]  # Подтвердил переводчик (ожидает проверки)
+        context["completed_sentences"] = assigned_sentences.filter(status=2)[:3]  # Подтвердил корректор
 
         # Получаем переводы пользователя
         user_translations = Translation.objects.filter(translator=self.request.user)
@@ -518,14 +518,15 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Получаем переводы, назначенные этому корректору или не назначенные никому
+        # Получаем переводы со статусом "pending", назначенные этому корректору или не назначенные никому
         # Корректор видит только переводы, где он указан как corrector или где corrector не указан
         context["in_review_translations"] = (
             Translation.objects.filter(translated_text__isnull=False)
             .exclude(translated_text="")
+            .filter(status="pending")
             .filter(Q(sentence__corrector=self.request.user) | Q(sentence__corrector__isnull=True))
             .select_related("sentence__document", "translator")
-            .order_by("-translated_at")
+            .order_by("-translated_at")[:3]
         )
 
         # Получаем переводы, которые нужно проверить (статус pending) и назначены этому корректору
@@ -537,7 +538,7 @@ class CorrectorDashboardView(LoginRequiredMixin, CorrectorOnlyMixin, TemplateVie
         completed_corrections = Translation.objects.filter(
             sentence__corrector=self.request.user, status__in=["approved", "rejected"]
         )
-        context["completed_corrections"] = completed_corrections
+        context["completed_corrections"] = completed_corrections.order_by("-corrected_at")[:3]
 
         # Статистика корректора
         context["total_reviewed"] = completed_corrections.count()

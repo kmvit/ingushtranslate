@@ -72,7 +72,7 @@
     <!-- Переводы на проверке -->
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Назначенные мне переводы</h2>
+            <h2 class="text-lg font-medium text-gray-900">Последние требующие корректировки предложения</h2>
         </div>
         <div class="p-6">
             {% if in_review_translations %}
@@ -121,7 +121,7 @@
         <div class="p-6">
             {% if completed_corrections %}
                 <div class="space-y-4">
-                    {% for translation in completed_corrections|slice:":5" %}
+                    {% for translation in completed_corrections %}
                     <div class="border border-gray-200 rounded-lg p-4">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">

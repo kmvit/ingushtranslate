@@ -199,6 +199,15 @@ class Translation(models.Model):
         related_name="translations",
         verbose_name="Переводчик",
     )
+    corrector = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="corrected_translations",
+        verbose_name="Корректор",
+        limit_choices_to={"role": "corrector"},
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", verbose_name="Статус")
     translated_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата перевода")
     corrected_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата корректировки")
