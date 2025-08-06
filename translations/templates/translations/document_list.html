@@ -133,7 +133,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                {% for document in page_obj %}
+                {% for document in documents %}
                 <tr class="{% if not document.translator or not document.corrector %}bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-l-blue-400 hover:from-blue-100 hover:to-blue-150{% else %}hover:bg-gray-50{% endif %}">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">

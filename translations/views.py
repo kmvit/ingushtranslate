@@ -34,7 +34,7 @@ class DocumentListView(LoginRequiredMixin, DocumentAccessMixin, ListView):
 
     model = Document
     template_name = "translations/document_list.html"
-    context_object_name = "page_obj"
+    context_object_name = "documents"
     paginate_by = 25
 
     def get_queryset(self):
@@ -109,7 +109,7 @@ class DocumentListView(LoginRequiredMixin, DocumentAccessMixin, ListView):
             context["total_documents"] = corrector_documents.count()
         
         # Добавляем статистику для каждого документа
-        for document in context["page_obj"]:
+        for document in context["documents"]:
             document.translation_stats = document.get_translation_stats()
             document.correction_stats = document.get_correction_stats()
         
