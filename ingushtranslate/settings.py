@@ -150,3 +150,31 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/users/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/users/login/"
+
+# Логирование
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "docx_file": {
+            "class": "logging.FileHandler",
+            "level": "INFO",
+            "filename": str(BASE_DIR / "log"),
+            "encoding": "utf-8",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        # Логгер для экспорта DOCX (табличного)
+        "docx_export": {
+            "handlers": ["docx_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

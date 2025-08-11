@@ -14,6 +14,9 @@ import docx
 import openpyxl
 
 from .models import Document
+import logging
+
+docx_logger = logging.getLogger("docx_export")
 
 
 def export_to_txt(document: Document, output_path: str) -> str:
@@ -35,6 +38,7 @@ def export_to_docx(document: Document, output_path: str) -> str:
     """
     Экспортирует переводы документа в DOCX файл в виде таблицы
     """
+    docx_logger.info(f"Начало экспорта DOCX (таблица) для документа id={document.id} title='{document.title}'")
     doc = docx.Document()
 
     sentences = document.sentences.all().order_by("sentence_number")
@@ -54,8 +58,12 @@ def export_to_docx(document: Document, output_path: str) -> str:
         row_cells[2].text = (
             sentence.translation.translated_text if sentence.has_translation else ""
         )
+    docx_logger.info(
+        f"Сформирована таблица: строк={len(sentences)}; путь сохранения='{output_path}'"
+    )
 
     doc.save(output_path)
+    docx_logger.info(f"DOCX (таблица) сохранен: '{output_path}'")
     return output_path
 
 

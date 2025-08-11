@@ -1,0 +1,3 @@
+2025-08-11 11:12:01,117 [INFO] docx_export: Начало экспорта DOCX (таблица) для документа id=1 title='sample_document'
+2025-08-11 11:12:01,143 [INFO] docx_export: Сформирована таблица: строк=4; путь сохранения='/Users/home/PycharmProjects/ingushtranslate/media/exports/translation_1_sample_document_table.docx'
+2025-08-11 11:12:01,160 [INFO] docx_export: DOCX (таблица) сохранен: '/Users/home/PycharmProjects/ingushtranslate/media/exports/translation_1_sample_document_table.docx'
