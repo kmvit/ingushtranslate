@@ -278,3 +278,5 @@ dmypy.json
 cython_debug/ 
 
 documentation/
+
+log/

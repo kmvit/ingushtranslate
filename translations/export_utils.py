@@ -41,29 +41,36 @@ def export_to_docx(document: Document, output_path: str) -> str:
     docx_logger.info(f"Начало экспорта DOCX (таблица) для документа id={document.id} title='{document.title}'")
     doc = docx.Document()
 
-    sentences = document.sentences.all().order_by("sentence_number")
+    sentences = list(document.sentences.all().order_by("sentence_number"))
+    total_rows = len(sentences)
+    docx_logger.info(f"Создание таблицы на {total_rows} строк (+1 заголовок)")
 
-    # Таблица с заголовками: №, Оригинал, Перевод
-    table = doc.add_table(rows=1, cols=3)
+    # Таблица с заголовками: №, Оригинал, Перевод (создаем сразу нужное число строк для производительности)
+    table = doc.add_table(rows=total_rows + 1, cols=3)
     table.style = "Table Grid"
     header_cells = table.rows[0].cells
     header_cells[0].text = "№"
     header_cells[1].text = "Оригинал"
     header_cells[2].text = "Перевод"
 
-    for sentence in sentences:
-        row_cells = table.add_row().cells
+    # Заполняем строки (начиная со второй строки таблицы)
+    for idx, sentence in enumerate(sentences, start=1):
+        row_cells = table.rows[idx].cells
         row_cells[0].text = str(sentence.sentence_number)
         row_cells[1].text = sentence.original_text or ""
         row_cells[2].text = (
             sentence.translation.translated_text if sentence.has_translation else ""
         )
-    docx_logger.info(
-        f"Сформирована таблица: строк={len(sentences)}; путь сохранения='{output_path}'"
-    )
+        if idx % 1000 == 0:
+            docx_logger.info(f"Заполнено строк: {idx}/{total_rows}")
+    docx_logger.info(f"Сформирована таблица: строк={total_rows}; путь сохранения='{output_path}'")
 
-    doc.save(output_path)
-    docx_logger.info(f"DOCX (таблица) сохранен: '{output_path}'")
+    try:
+        doc.save(output_path)
+        docx_logger.info(f"DOCX (таблица) сохранен: '{output_path}'")
+    except Exception as e:
+        docx_logger.exception(f"Ошибка сохранения DOCX (таблица): {e}")
+        raise
     return output_path
 
 
