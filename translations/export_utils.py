@@ -11,6 +11,8 @@ from django.http import HttpResponse
 from django.utils.encoding import smart_str
 
 import docx
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 import openpyxl
 
 from .models import Document
@@ -34,6 +36,29 @@ def export_to_txt(document: Document, output_path: str) -> str:
     return output_path
 
 
+def _create_tc(text: str) -> OxmlElement:
+    tc = OxmlElement("w:tc")
+    p = OxmlElement("w:p")
+    r = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    text = text or ""
+    # Сохраняем пробелы, если есть ведущие/замыкающие
+    if text.strip() != text:
+        t.set(qn("xml:space"), "preserve")
+    t.text = text
+    r.append(t)
+    p.append(r)
+    tc.append(p)
+    return tc
+
+
+def _append_row_fast(table, values):
+    tr = OxmlElement("w:tr")
+    for v in values:
+        tr.append(_create_tc(str(v) if v is not None else ""))
+    table._tbl.append(tr)
+
+
 def export_to_docx(document: Document, output_path: str) -> str:
     """
     Экспортирует переводы документа в DOCX файл в виде таблицы
@@ -45,22 +70,19 @@ def export_to_docx(document: Document, output_path: str) -> str:
     total_rows = len(sentences)
     docx_logger.info(f"Создание таблицы на {total_rows} строк (+1 заголовок)")
 
-    # Таблица с заголовками: №, Оригинал, Перевод (создаем сразу нужное число строк для производительности)
-    table = doc.add_table(rows=total_rows + 1, cols=3)
+    # Таблица с заголовками: №, Оригинал, Перевод
+    table = doc.add_table(rows=1, cols=3)
     table.style = "Table Grid"
     header_cells = table.rows[0].cells
     header_cells[0].text = "№"
     header_cells[1].text = "Оригинал"
     header_cells[2].text = "Перевод"
 
-    # Заполняем строки (начиная со второй строки таблицы)
+    # Быстрый режим добавления строк через oxml (значительно быстрее для больших таблиц)
     for idx, sentence in enumerate(sentences, start=1):
-        row_cells = table.rows[idx].cells
-        row_cells[0].text = str(sentence.sentence_number)
-        row_cells[1].text = sentence.original_text or ""
-        row_cells[2].text = (
-            sentence.translation.translated_text if sentence.has_translation else ""
-        )
+        orig = sentence.original_text or ""
+        trans = sentence.translation.translated_text if sentence.has_translation else ""
+        _append_row_fast(table, [sentence.sentence_number, orig, trans])
         if idx % 1000 == 0:
             docx_logger.info(f"Заполнено строк: {idx}/{total_rows}")
     docx_logger.info(f"Сформирована таблица: строк={total_rows}; путь сохранения='{output_path}'")
