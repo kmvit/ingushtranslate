@@ -1,5 +1,6 @@
 import json
 import os
+from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,6 +11,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, View
+from django.utils.text import slugify
 
 from dashboards.mixins import AdminOrRepresentativeMixin, DocumentAccessMixin
 
@@ -997,8 +999,33 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
 
             # Читаем файл и отправляем как ответ
             with open(file_path, "rb") as f:
-                response = HttpResponse(f.read(), content_type="application/octet-stream")
-                response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                # Устанавливаем корректный MIME тип по формату
+                if format == "txt":
+                    content_type = "text/plain; charset=utf-8"
+                elif format == "docx":
+                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                elif format == "xlsx":
+                    content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                else:
+                    content_type = "application/octet-stream"
+
+                content = f.read()
+                # Имя экспортируемого файла: оригинальное имя без расширения + _(inh) + нужное расширение
+                orig_stem = document.title
+                actual_name = f"{orig_stem}_(inh).{format}"
+                name_stem, ext = os.path.splitext(actual_name)
+                # ASCII-совместимое имя для filename= (RFC 6266 фолбэк)
+                ascii_stem = slugify(name_stem, allow_unicode=False) or "file"
+                fallback_name = f"{ascii_stem}{ext or ('.' + format)}"
+
+                response = HttpResponse(content, content_type=content_type)
+                response["Content-Disposition"] = (
+                    f"attachment; filename=\"{fallback_name}\"; filename*=UTF-8''{quote(actual_name)}"
+                )
+                try:
+                    response["Content-Length"] = str(os.path.getsize(file_path))
+                except OSError:
+                    pass
 
             # Удаляем временный файл
             os.remove(file_path)
@@ -1021,8 +1048,22 @@ class ExportDocumentAllView(LoginRequiredMixin, AdminOrRepresentativeMixin, View
 
             # Читаем файл и отправляем как ответ
             with open(file_path, "rb") as f:
-                response = HttpResponse(f.read(), content_type="application/zip")
-                response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_path)}"'
+                content = f.read()
+                # Имя ZIP: оригинальное имя без расширения + _(inh)_all_formats.zip
+                orig_stem = document.title
+                actual_name = f"{orig_stem}_(inh)_all_formats.zip"
+                name_stem, ext = os.path.splitext(actual_name)
+                ascii_stem = slugify(name_stem, allow_unicode=False) or "archive"
+                fallback_name = f"{ascii_stem}{ext or '.zip'}"
+
+                response = HttpResponse(content, content_type="application/zip")
+                response["Content-Disposition"] = (
+                    f"attachment; filename=\"{fallback_name}\"; filename*=UTF-8''{quote(actual_name)}"
+                )
+                try:
+                    response["Content-Length"] = str(os.path.getsize(file_path))
+                except OSError:
+                    pass
 
             # Удаляем временный файл
             os.remove(file_path)
