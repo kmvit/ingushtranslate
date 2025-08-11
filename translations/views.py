@@ -1,5 +1,6 @@
 import json
 import os
+import mimetypes
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -991,7 +992,7 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
         document = get_object_or_404(Document, id=document_id)
 
         try:
-            if format not in ["txt", "docx", "xlsx"]:
+            if format not in ["txt", "docx", "docx_table", "docx_translated", "xlsx"]:
                 messages.error(request, "Неподдерживаемый формат экспорта.")
                 return redirect("translations:document_detail", document_id=document_id)
 
@@ -999,24 +1000,34 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
 
             # Читаем файл и отправляем как ответ
             with open(file_path, "rb") as f:
-                # Устанавливаем корректный MIME тип по формату
-                if format == "txt":
-                    content_type = "text/plain; charset=utf-8"
-                elif format == "docx":
-                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                elif format == "xlsx":
-                    content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                else:
-                    content_type = "application/octet-stream"
-
                 content = f.read()
-                # Имя экспортируемого файла: оригинальное имя без расширения + _(inh) + нужное расширение
+
+                # Определяем имя и тип на основе фактического результата экспорта
                 orig_stem = document.title
-                actual_name = f"{orig_stem}_(inh).{format}"
+                output_ext = os.path.splitext(file_path)[1].lower()
+
+                # Имя и тип для каждого поддерживаемого формата
+                if format == "docx_table":
+                    actual_name = f"{orig_stem}_(inh)_table.docx"
+                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                elif format == "docx_translated":
+                    actual_name = f"{orig_stem}_(inh)_translated_only.docx"
+                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                else:
+                    if output_ext == ".zip":
+                        actual_name = f"{orig_stem}_(inh)_docx_variants.zip"
+                        content_type = "application/zip"
+                    else:
+                        actual_name = f"{orig_stem}_(inh){output_ext}"
+                        guessed_type, _ = mimetypes.guess_type(actual_name)
+                        content_type = guessed_type or "application/octet-stream"
+                        if output_ext == ".txt" and "charset" not in content_type:
+                            content_type = "text/plain; charset=utf-8"
+
                 name_stem, ext = os.path.splitext(actual_name)
                 # ASCII-совместимое имя для filename= (RFC 6266 фолбэк)
                 ascii_stem = slugify(name_stem, allow_unicode=False) or "file"
-                fallback_name = f"{ascii_stem}{ext or ('.' + format)}"
+                fallback_name = f"{ascii_stem}{ext or output_ext or ''}"
 
                 response = HttpResponse(content, content_type=content_type)
                 response["Content-Disposition"] = (

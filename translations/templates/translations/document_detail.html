@@ -73,8 +73,11 @@
                         <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
                             <a href="{% url 'translations:export_document' document_id=document.id format='txt' %}" 
                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">TXT файл</a>
-                            <a href="{% url 'translations:export_document' document_id=document.id format='docx' %}" 
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">DOCX файл</a>
+                            <div class="border-t border-gray-100"></div>
+                            <a href="{% url 'translations:export_document' document_id=document.id format='docx_table' %}"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">DOCX</a>
+                            <a href="{% url 'translations:export_document' document_id=document.id format='docx_translated' %}"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">DOCX — переведенный текст</a>
                             <a href="{% url 'translations:export_document' document_id=document.id format='xlsx' %}" 
                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">XLSX файл</a>
                             <div class="border-t border-gray-200"></div>

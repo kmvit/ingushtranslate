@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from django.core.files.storage import default_storage
 from django.http import HttpResponse
@@ -23,67 +23,84 @@ def export_to_txt(document: Document, output_path: str) -> str:
     sentences = document.sentences.all().order_by("sentence_number")
 
     with open(output_path, "w", encoding="utf-8") as file:
-        file.write(f"Перевод документа: {document.title}\n")
-        file.write("=" * 50 + "\n\n")
-
         for sentence in sentences:
-            file.write(f"Предложение {sentence.sentence_number}:\n")
-            file.write(f"Оригинал: {sentence.original_text}\n")
-
-            if sentence.has_translation:
-                translation = sentence.translation
-                file.write(f"Перевод: {translation.translated_text}\n")
-                status_text = (
-                    "Одобрен"
-                    if translation.status == "approved"
-                    else "Отклонен" if translation.status == "rejected"
-                    else "На проверке"
-                )
-                file.write(f"Статус: {status_text}\n")
-            else:
-                file.write("Перевод: Не переведено\n")
-            file.write("-" * 30 + "\n\n")
+            original_text = sentence.original_text or ""
+            translated_text = sentence.translation.translated_text if sentence.has_translation else ""
+            file.write(f"{original_text}\t{translated_text}\n")
 
     return output_path
 
 
 def export_to_docx(document: Document, output_path: str) -> str:
     """
-    Экспортирует переводы документа в DOCX файл
+    Экспортирует переводы документа в DOCX файл в виде таблицы
     """
     doc = docx.Document()
 
-    # Заголовок
-    doc.add_paragraph("=" * 50)
-    doc.add_paragraph()
-
     sentences = document.sentences.all().order_by("sentence_number")
 
+    # Таблица с заголовками: №, Оригинал, Перевод
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    header_cells = table.rows[0].cells
+    header_cells[0].text = "№"
+    header_cells[1].text = "Оригинал"
+    header_cells[2].text = "Перевод"
+
     for sentence in sentences:
-        # Номер предложения
-        doc.add_heading(f"Предложение {sentence.sentence_number}", level=1)
+        row_cells = table.add_row().cells
+        row_cells[0].text = str(sentence.sentence_number)
+        row_cells[1].text = sentence.original_text or ""
+        row_cells[2].text = (
+            sentence.translation.translated_text if sentence.has_translation else ""
+        )
 
-        # Оригинал
-        doc.add_paragraph("Оригинал:", style="Heading 2")
-        doc.add_paragraph(sentence.original_text)
+    doc.save(output_path)
+    return output_path
 
-        # Перевод
-        doc.add_paragraph("Перевод:", style="Heading 2")
-        if sentence.has_translation:
-            translation = sentence.translation
-            doc.add_paragraph(translation.translated_text)
 
-            # Статус
-            status_text = (
-                "Одобрен"
-                if translation.status == "approved"
-                else "Отклонен" if translation.status == "rejected" else "На проверке"
-            )
-            doc.add_paragraph(f"Статус: {status_text}")
-        else:
-            doc.add_paragraph("Не переведено")
+def _iter_all_paragraphs(document_obj) -> List[docx.text.paragraph.Paragraph]:
+    paragraphs: List[docx.text.paragraph.Paragraph] = list(document_obj.paragraphs)
+    # Обходим таблицы рекурсивно
+    for table in document_obj.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                paragraphs.extend(cell.paragraphs)
+    return paragraphs
 
-        doc.add_paragraph()
+
+def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacements: List[Tuple[str, str]]):
+    # Заменяем внутри каждого run, чтобы максимально сохранить форматирование run'ов
+    for run in paragraph.runs:
+        text = run.text
+        if not text:
+            continue
+        for src, dst in replacements:
+            if src and src in text:
+                text = text.replace(src, dst)
+        run.text = text
+
+
+def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
+    """
+    Создает DOCX, повторяющий структуру исходного документа, заменяя исходные предложения переведенным текстом.
+    Примечание: сохранение форматирования ограничено — при замене внутри run форматирование сохраняется,
+    но предложения, разбитые на несколько run, могут быть заменены частично.
+    """
+    # Словарь замен: оригинал -> перевод
+    sentence_map: List[Tuple[str, str]] = []
+    for s in document.sentences.all().order_by("sentence_number"):
+        if hasattr(s, "translation") and s.translation and s.translation.translated_text:
+            # более длинные исходные строки должны заменяться сначала
+            sentence_map.append((s.original_text, s.translation.translated_text))
+    # Сортируем по длине исходного текста по убыванию
+    sentence_map.sort(key=lambda x: len(x[0] or ""), reverse=True)
+
+    doc = docx.Document(original_docx_path)
+
+    # Параграфы документа и ячейки таблиц
+    for paragraph in _iter_all_paragraphs(doc):
+        _replace_text_in_runs(paragraph, sentence_map)
 
     doc.save(output_path)
     return output_path
@@ -99,7 +116,7 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
 
     # Заголовки
     headers = [
-        "Номер предложения",
+        "№",
         "Оригинальный текст",
         "Переведенный текст",
         "Переводчик",
@@ -181,9 +198,29 @@ def export_document_translations(document: Document, format_type: str) -> str:
     if format_type == "txt":
         output_path = os.path.join(export_dir, f"{base_name}.txt")
         return export_to_txt(document, output_path)
-    elif format_type == "docx":
-        output_path = os.path.join(export_dir, f"{base_name}.docx")
+    elif format_type == "docx_table":
+        output_path = os.path.join(export_dir, f"{base_name}_table.docx")
         return export_to_docx(document, output_path)
+    elif format_type == "docx_translated":
+        output_path = os.path.join(export_dir, f"{base_name}_translated_only.docx")
+        # Пытаемся использовать исходный DOCX для максимально точного воспроизведения
+        original_path = None
+        try:
+            if document.file and document.file.name.lower().endswith(".docx"):
+                original_path = default_storage.path(document.file.name)
+        except Exception:
+            original_path = None
+
+        if original_path and os.path.exists(original_path):
+            return export_to_docx_translated_only(document, original_path, output_path)
+        else:
+            # Фолбэк: создаем простой документ с переведенным текстом построчно
+            simple_doc = docx.Document()
+            for s in document.sentences.all().order_by("sentence_number"):
+                text = s.translation.translated_text if hasattr(s, "translation") and s.translation else ""
+                simple_doc.add_paragraph(text)
+            simple_doc.save(output_path)
+            return output_path
     elif format_type == "xlsx":
         output_path = os.path.join(export_dir, f"{base_name}.xlsx")
         return export_to_xlsx(document, output_path)
@@ -202,12 +239,30 @@ def export_document_all_formats(document: Document) -> str:
 
         # Экспортируем во все форматы
         txt_path = os.path.join(temp_dir, f"{base_name}.txt")
-        docx_path = os.path.join(temp_dir, f"{base_name}.docx")
+        docx_table_path = os.path.join(temp_dir, f"{base_name}_table.docx")
+        docx_translated_path = os.path.join(temp_dir, f"{base_name}_translated_only.docx")
         xlsx_path = os.path.join(temp_dir, f"{base_name}.xlsx")
 
         # Создаем файлы
         export_to_txt(document, txt_path)
-        export_to_docx(document, docx_path)
+        export_to_docx(document, docx_table_path)
+        # Сгенерировать translated_only DOCX
+        original_path = None
+        try:
+            if document.file and document.file.name.lower().endswith(".docx"):
+                original_path = default_storage.path(document.file.name)
+        except Exception:
+            original_path = None
+
+        if original_path and os.path.exists(original_path):
+            export_to_docx_translated_only(document, original_path, docx_translated_path)
+        else:
+            simple_doc = docx.Document()
+            for s in document.sentences.all().order_by("sentence_number"):
+                text = s.translation.translated_text if hasattr(s, "translation") and s.translation else ""
+                simple_doc.add_paragraph(text)
+            simple_doc.save(docx_translated_path)
+
         export_to_xlsx(document, xlsx_path)
 
         # Создаем ZIP архив
@@ -216,7 +271,8 @@ def export_document_all_formats(document: Document) -> str:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Добавляем файлы в архив
             zipf.write(txt_path, os.path.basename(txt_path))
-            zipf.write(docx_path, os.path.basename(docx_path))
+            zipf.write(docx_table_path, os.path.basename(docx_table_path))
+            zipf.write(docx_translated_path, os.path.basename(docx_translated_path))
             zipf.write(xlsx_path, os.path.basename(xlsx_path))
 
         # Копируем архив в постоянную директорию
