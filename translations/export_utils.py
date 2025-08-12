@@ -21,6 +21,25 @@ import logging
 
 docx_logger = logging.getLogger("docx_export")
 
+# Кеш для скомпилированных regex-паттернов (толерантных к пробелам)
+_REPLACEMENT_REGEX_CACHE: Dict[str, re.Pattern] = {}
+
+
+def _get_whitespace_tolerant_pattern(source_text: str) -> re.Pattern:
+    """Возвращает скомпилированный regex для строки, где пробелы/NBSP заменены на \s+.
+
+    Кеширует результаты, чтобы не компилировать паттерн многократно для каждого параграфа.
+    """
+    cached = _REPLACEMENT_REGEX_CACHE.get(source_text)
+    if cached is not None:
+        return cached
+    escaped = re.escape(source_text)
+    escaped = escaped.replace(r"\ ", r"\\s+")
+    escaped = escaped.replace(re.escape("\xa0"), r"\\s+")
+    pattern = re.compile(escaped)
+    _REPLACEMENT_REGEX_CACHE[source_text] = pattern
+    return pattern
+
 
 def export_to_txt(document: Document, output_path: str) -> str:
     """
@@ -108,6 +127,12 @@ def _iter_all_paragraphs(document_obj) -> List[docx.text.paragraph.Paragraph]:
 
 
 def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacements: List[Tuple[str, str]]):
+    if not paragraph.runs:
+        return
+
+    # Снимок исходного текста run'ов до правок
+    before_runs_texts = [r.text or "" for r in paragraph.runs]
+
     # Шаг 1. Точная замена внутри каждого run (сохранение форматирования там, где возможно)
     for run in paragraph.runs:
         text = run.text
@@ -118,30 +143,26 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
                 text = text.replace(src, dst)
         run.text = text
 
-    # Шаг 2. Кросс-run замена на уровне всего параграфа с толерантностью к пробелам/неразрывным пробелам
-    if not paragraph.runs:
+    after_run_replace_text = "".join(r.text or "" for r in paragraph.runs)
+    before_full_text = "".join(before_runs_texts)
+
+    # Если уже что-то поменялось на шаге 1, то часто кросс-run не требуется.
+    # Также если параграф состоит из одного run — кросс-run не нужен.
+    if after_run_replace_text != before_full_text or len(paragraph.runs) <= 1:
         return
 
-    original_full_text = "".join(r.text or "" for r in paragraph.runs)
-    new_full_text = original_full_text
+    # Шаг 2. Кросс-run замена на уровне всего параграфа с толерантностью к пробелам/неразрывным пробелам
+    new_full_text = before_full_text
 
-    # Компилируем паттерны для замен: пробелы (включая NBSP) трактуем как \s+
+    # Используем кеш паттернов
     for src, dst in replacements:
         if not src:
             continue
-        # Экранируем, затем заменяем обычные пробелы и NBSP на \s+
-        escaped = re.escape(src)
-        escaped = escaped.replace(r"\ ", r"\\s+")
-        escaped = escaped.replace(re.escape("\xa0"), r"\\s+")
-        try:
-            pattern = re.compile(escaped)
-        except re.error:
-            # Если вдруг некорректный паттерн, пропускаем
-            continue
+        pattern = _get_whitespace_tolerant_pattern(src)
         new_full_text = pattern.sub(dst, new_full_text)
 
     # Если изменений нет — выходим
-    if new_full_text == original_full_text:
+    if new_full_text == before_full_text:
         return
 
     # Перераспределяем обновленный текст обратно по существующим run'ам,
@@ -149,7 +170,7 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
     pos = 0
     runs = paragraph.runs
     for idx, run in enumerate(runs):
-        run_len = len(run.text or "")
+        run_len = len(before_runs_texts[idx])
         if idx < len(runs) - 1:
             segment = new_full_text[pos : pos + run_len]
             pos += run_len
