@@ -112,7 +112,7 @@ def export_to_txt(document: Document, output_path: str) -> str:
         for sentence in sentences:
             original_text = sentence.original_text or ""
             translated_text = sentence.translation.translated_text if sentence.has_translation else ""
-            file.write(f"{original_text}\t{translated_text}\n")
+            file.write(f"\t{original_text}\t{translated_text}\n")
 
     return output_path
 
