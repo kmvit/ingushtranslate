@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import zipfile
 from typing import Dict, List, Tuple
+import re
 
 from django.core.files.storage import default_storage
 from django.http import HttpResponse
@@ -107,7 +108,7 @@ def _iter_all_paragraphs(document_obj) -> List[docx.text.paragraph.Paragraph]:
 
 
 def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacements: List[Tuple[str, str]]):
-    # Заменяем внутри каждого run, чтобы максимально сохранить форматирование run'ов
+    # Шаг 1. Точная замена внутри каждого run (сохранение форматирования там, где возможно)
     for run in paragraph.runs:
         text = run.text
         if not text:
@@ -116,6 +117,45 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
             if src and src in text:
                 text = text.replace(src, dst)
         run.text = text
+
+    # Шаг 2. Кросс-run замена на уровне всего параграфа с толерантностью к пробелам/неразрывным пробелам
+    if not paragraph.runs:
+        return
+
+    original_full_text = "".join(r.text or "" for r in paragraph.runs)
+    new_full_text = original_full_text
+
+    # Компилируем паттерны для замен: пробелы (включая NBSP) трактуем как \s+
+    for src, dst in replacements:
+        if not src:
+            continue
+        # Экранируем, затем заменяем обычные пробелы и NBSP на \s+
+        escaped = re.escape(src)
+        escaped = escaped.replace(r"\ ", r"\\s+")
+        escaped = escaped.replace(re.escape("\xa0"), r"\\s+")
+        try:
+            pattern = re.compile(escaped)
+        except re.error:
+            # Если вдруг некорректный паттерн, пропускаем
+            continue
+        new_full_text = pattern.sub(dst, new_full_text)
+
+    # Если изменений нет — выходим
+    if new_full_text == original_full_text:
+        return
+
+    # Перераспределяем обновленный текст обратно по существующим run'ам,
+    # чтобы минимально нарушить форматирование (последний run получает «хвост»)
+    pos = 0
+    runs = paragraph.runs
+    for idx, run in enumerate(runs):
+        run_len = len(run.text or "")
+        if idx < len(runs) - 1:
+            segment = new_full_text[pos : pos + run_len]
+            pos += run_len
+        else:
+            segment = new_full_text[pos:]
+        run.text = segment
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
@@ -176,7 +216,11 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
         if sentence.has_translation:
             translation = sentence.translation
             sheet.cell(row=row, column=3, value=translation.translated_text)
-            sheet.cell(row=row, column=4, value=str(translation.translator))
+            sheet.cell(
+                row=row,
+                column=4,
+                value=(translation.translator.username if translation.translator else ""),
+            )
             sheet.cell(
                 row=row,
                 column=5,
