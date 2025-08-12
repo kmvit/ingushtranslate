@@ -132,29 +132,10 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
 
     # Снимок исходного текста run'ов до правок
     before_runs_texts = [r.text or "" for r in paragraph.runs]
-
-    # Шаг 1. Точная замена внутри каждого run (сохранение форматирования там, где возможно)
-    for run in paragraph.runs:
-        text = run.text
-        if not text:
-            continue
-        for src, dst in replacements:
-            if src and src in text:
-                text = text.replace(src, dst)
-        run.text = text
-
-    after_run_replace_text = "".join(r.text or "" for r in paragraph.runs)
     before_full_text = "".join(before_runs_texts)
 
-    # Если уже что-то поменялось на шаге 1, то часто кросс-run не требуется.
-    # Также если параграф состоит из одного run — кросс-run не нужен.
-    if after_run_replace_text != before_full_text or len(paragraph.runs) <= 1:
-        return
-
-    # Шаг 2. Кросс-run замена на уровне всего параграфа с толерантностью к пробелам/неразрывным пробелам
+    # Шаг 1. Сначала делаем кросс-run замену по всему параграфу (это главное!)
     new_full_text = before_full_text
-
-    # Используем кеш паттернов
     for src, dst in replacements:
         if not src:
             continue
@@ -165,8 +146,8 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
     if new_full_text == before_full_text:
         return
 
-    # Перераспределяем обновленный текст обратно по существующим run'ам,
-    # чтобы минимально нарушить форматирование (последний run получает «хвост»)
+    # Шаг 2. Перераспределяем обновленный текст обратно по существующим run'ам,
+    # чтобы минимально нарушить форматирование
     pos = 0
     runs = paragraph.runs
     for idx, run in enumerate(runs):
@@ -177,6 +158,17 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
         else:
             segment = new_full_text[pos:]
         run.text = segment
+
+    # Шаг 3. Дополнительно делаем точечные замены внутри каждого run для случаев,
+    # когда предложение может быть разбито на части с разным форматированием
+    for run in paragraph.runs:
+        text = run.text
+        if not text:
+            continue
+        for src, dst in replacements:
+            if src and src in text:
+                text = text.replace(src, dst)
+        run.text = text
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
