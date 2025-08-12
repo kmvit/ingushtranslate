@@ -107,15 +107,26 @@ def _iter_all_paragraphs(document_obj) -> List[docx.text.paragraph.Paragraph]:
 
 
 def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacements: List[Tuple[str, str]]):
-    # Заменяем внутри каждого run, чтобы максимально сохранить форматирование run'ов
-    for run in paragraph.runs:
-        text = run.text
-        if not text:
-            continue
-        for src, dst in replacements:
-            if src and src in text:
-                text = text.replace(src, dst)
-        run.text = text
+    if not paragraph.runs:
+        return
+    
+    # Собираем полный текст параграфа
+    full_text = "".join(run.text or "" for run in paragraph.runs)
+    original_text = full_text
+    
+    # Делаем замены в полном тексте
+    for src, dst in replacements:
+        if src and src in full_text:
+            full_text = full_text.replace(src, dst)
+    
+    # Если текст изменился, перераспределяем его по run'ам
+    if full_text != original_text:
+        # Простое перераспределение: первый run получает весь новый текст
+        if paragraph.runs:
+            paragraph.runs[0].text = full_text
+            # Очищаем остальные run'ы
+            for run in paragraph.runs[1:]:
+                run.text = ""
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
@@ -176,11 +187,7 @@ def export_to_xlsx(document: Document, output_path: str) -> str:
         if sentence.has_translation:
             translation = sentence.translation
             sheet.cell(row=row, column=3, value=translation.translated_text)
-            sheet.cell(
-                row=row,
-                column=4,
-                value=(translation.translator.username if translation.translator else ""),
-            )
+            sheet.cell(row=row, column=4, value=str(translation.translator))
             sheet.cell(
                 row=row,
                 column=5,
