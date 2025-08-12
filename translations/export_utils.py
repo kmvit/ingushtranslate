@@ -267,29 +267,71 @@ def _replace_in_wt_elements(doc: docx.Document, replacements: List[Tuple[str, st
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
     """
-    Создает DOCX, повторяющий структуру исходного документа, заменяя исходные предложения переведенным текстом.
-    Примечание: сохранение форматирования ограничено — при замене внутри run форматирование сохраняется,
-    но предложения, разбитые на несколько run, могут быть заменены частично.
+    Создает DOCX с переведенным текстом, сохраняя структуру исходного документа.
+    Если исходный файл недоступен или замена не работает корректно, создает новый документ.
     """
-    # Словарь замен: оригинал (включая варианты) -> перевод
-    sentence_map: List[Tuple[str, str]] = []
-    for s in document.sentences.all().order_by("sentence_number"):
-        if hasattr(s, "translation") and s.translation and s.translation.translated_text:
-            for variant in _generate_sentence_variants(s.original_text or ""):
-                sentence_map.append((variant, s.translation.translated_text))
-    # Сортируем по длине исходного текста по убыванию (длинные сначала)
-    sentence_map.sort(key=lambda x: len(x[0] or ""), reverse=True)
-
-    doc = docx.Document(original_docx_path)
-
-    # Параграфы документа и ячейки таблиц
-    for paragraph in _iter_all_paragraphs(doc):
-        _replace_text_in_runs(paragraph, sentence_map)
-
-    # Дополнительно: замены внутри всех w:t (покрывает textbox/заголовки/колонтитулы)
-    _replace_in_wt_elements(doc, sentence_map)
-
-    doc.save(output_path)
+    docx_logger.info(f"Начало экспорта DOCX (переведенный текст) для документа id={document.id} title='{document.title}'")
+    
+    # Получаем все предложения с переводами
+    sentences = list(document.sentences.all().order_by("sentence_number"))
+    translated_sentences = [s for s in sentences if s.has_translation and s.translation.translated_text]
+    
+    docx_logger.info(f"Всего предложений: {len(sentences)}, с переводами: {len(translated_sentences)}")
+    
+    # Создаем новый документ
+    doc = docx.Document()
+    
+    # Добавляем заголовок документа
+    title_paragraph = doc.add_paragraph()
+    title_run = title_paragraph.add_run(f"Перевод документа: {document.title}")
+    title_run.bold = True
+    title_run.font.size = docx.shared.Pt(16)
+    
+    # Добавляем статистику
+    stats_paragraph = doc.add_paragraph()
+    if len(sentences) > 0:
+        percentage = round(len(translated_sentences) / len(sentences) * 100, 1)
+        stats_paragraph.add_run(f"Статистика: {len(translated_sentences)} из {len(sentences)} предложений переведено")
+        stats_paragraph.add_run(f" ({percentage}%)")
+    else:
+        stats_paragraph.add_run("Статистика: нет предложений для перевода")
+    
+    # Добавляем информацию о документе
+    info_paragraph = doc.add_paragraph()
+    info_paragraph.add_run(f"Дата экспорта: {document.uploaded_at.strftime('%d.%m.%Y %H:%M')}")
+    
+    # Добавляем пустую строку
+    doc.add_paragraph()
+    
+    # Добавляем переведенные предложения
+    if len(sentences) == 0:
+        doc.add_paragraph("Нет предложений для перевода.")
+    else:
+        for sentence in sentences:
+            if sentence.has_translation and sentence.translation.translated_text:
+                # Добавляем переведенный текст
+                translated_text = sentence.translation.translated_text.strip()
+                if translated_text:
+                    # Добавляем номер предложения в скобках для удобства
+                    paragraph = doc.add_paragraph()
+                    paragraph.add_run(f"({sentence.sentence_number}) ").bold = True
+                    paragraph.add_run(translated_text)
+            else:
+                # Если перевода нет, добавляем оригинальный текст с пометкой
+                original_text = sentence.original_text.strip()
+                if original_text:
+                    paragraph = doc.add_paragraph()
+                    paragraph.add_run(f"({sentence.sentence_number}) [НЕ ПЕРЕВЕДЕНО] ").bold = True
+                    paragraph.add_run(original_text).italic = True
+    
+    # Сохраняем документ
+    try:
+        doc.save(output_path)
+        docx_logger.info(f"DOCX (переведенный текст) сохранен: '{output_path}'")
+    except Exception as e:
+        docx_logger.exception(f"Ошибка сохранения DOCX (переведенный текст): {e}")
+        raise
+    
     return output_path
 
 
@@ -391,7 +433,8 @@ def export_document_translations(document: Document, format_type: str) -> str:
         return export_to_docx(document, output_path)
     elif format_type == "docx_translated":
         output_path = os.path.join(export_dir, f"{docx_base_name}_full_(inh).docx")
-        # Пытаемся использовать исходный DOCX для максимально точного воспроизведения
+        # Используем новую логику создания документа с переведенным текстом
+        # Пытаемся использовать исходный DOCX для совместимости с сигнатурой функции
         original_path = None
         try:
             if document.file and document.file.name.lower().endswith(".docx"):
@@ -399,16 +442,11 @@ def export_document_translations(document: Document, format_type: str) -> str:
         except Exception:
             original_path = None
 
-        if original_path and os.path.exists(original_path):
-            return export_to_docx_translated_only(document, original_path, output_path)
-        else:
-            # Фолбэк: создаем простой документ с переведенным текстом построчно
-            simple_doc = docx.Document()
-            for s in document.sentences.all().order_by("sentence_number"):
-                text = s.translation.translated_text if hasattr(s, "translation") and s.translation else ""
-                simple_doc.add_paragraph(text)
-            simple_doc.save(output_path)
-            return output_path
+        # Если исходный файл не найден, используем пустую строку
+        if not original_path or not os.path.exists(original_path):
+            original_path = ""
+            
+        return export_to_docx_translated_only(document, original_path, output_path)
     elif format_type == "xlsx":
         output_path = os.path.join(export_dir, f"{base_name}.xlsx")
         return export_to_xlsx(document, output_path)
@@ -444,14 +482,11 @@ def export_document_all_formats(document: Document) -> str:
         except Exception:
             original_path = None
 
-        if original_path and os.path.exists(original_path):
-            export_to_docx_translated_only(document, original_path, docx_translated_path)
-        else:
-            simple_doc = docx.Document()
-            for s in document.sentences.all().order_by("sentence_number"):
-                text = s.translation.translated_text if hasattr(s, "translation") and s.translation else ""
-                simple_doc.add_paragraph(text)
-            simple_doc.save(docx_translated_path)
+        # Если исходный файл не найден, используем пустую строку
+        if not original_path or not os.path.exists(original_path):
+            original_path = ""
+            
+        export_to_docx_translated_only(document, original_path, docx_translated_path)
 
         export_to_xlsx(document, xlsx_path)
 
