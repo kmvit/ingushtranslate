@@ -14,11 +14,33 @@ import docx
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import openpyxl
+import re
 
 from .models import Document
 import logging
 
 docx_logger = logging.getLogger("docx_export")
+
+# Кеш для скомпилированных regex-паттернов (толерантных к пробелам)
+_REPLACEMENT_REGEX_CACHE: Dict[str, re.Pattern] = {}
+
+
+def _get_whitespace_tolerant_pattern(source_text: str) -> re.Pattern:
+    """
+    Возвращает скомпилированный regex для строки, где все виды пробелов (включая NBSP) свернуты в \s+.
+    Результат кешируется.
+    """
+    cached = _REPLACEMENT_REGEX_CACHE.get(source_text)
+    if cached is not None:
+        return cached
+    escaped = re.escape(source_text)
+    # Обычный пробел -> \s+
+    escaped = escaped.replace(r"\ ", r"\\s+")
+    # NBSP -> \s+
+    escaped = escaped.replace(re.escape("\xa0"), r"\\s+")
+    pattern = re.compile(escaped)
+    _REPLACEMENT_REGEX_CACHE[source_text] = pattern
+    return pattern
 
 
 def export_to_txt(document: Document, output_path: str) -> str:
@@ -109,24 +131,37 @@ def _iter_all_paragraphs(document_obj) -> List[docx.text.paragraph.Paragraph]:
 def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacements: List[Tuple[str, str]]):
     if not paragraph.runs:
         return
-    
-    # Собираем полный текст параграфа
+
+    # Собираем полный текст параграфа и упрощённую версию (схлопываем пробелы)
     full_text = "".join(run.text or "" for run in paragraph.runs)
     original_text = full_text
-    
-    # Делаем замены в полном тексте
+    simple_para = " ".join(full_text.split())
+
+    # Быстрая замена: точные вхождения
     for src, dst in replacements:
-        if src and src in full_text:
+        if not src:
+            continue
+        if src in full_text:
             full_text = full_text.replace(src, dst)
-    
-    # Если текст изменился, перераспределяем его по run'ам
+
+    # Предфильтр: если после точных замен ничего не поменялось, пробуем толерантные
+    if full_text == original_text:
+        # Для ускорения: пробуем только те предложения, чья нормализованная форма встречается в нормализованном параграфе
+        for src, dst in replacements:
+            if not src:
+                continue
+            simple_src = " ".join(src.split())
+            if simple_src and simple_src in simple_para:
+                pattern = _get_whitespace_tolerant_pattern(src)
+                new_full_text = pattern.sub(dst, full_text)
+                if new_full_text != full_text:
+                    full_text = new_full_text
+
+    # Если текст изменился, записываем в первый run и очищаем остальные (жертвуем внутрипараграфным форматированием)
     if full_text != original_text:
-        # Простое перераспределение: первый run получает весь новый текст
-        if paragraph.runs:
-            paragraph.runs[0].text = full_text
-            # Очищаем остальные run'ы
-            for run in paragraph.runs[1:]:
-                run.text = ""
+        paragraph.runs[0].text = full_text
+        for run in paragraph.runs[1:]:
+            run.text = ""
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
