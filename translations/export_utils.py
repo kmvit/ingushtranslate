@@ -25,22 +25,78 @@ docx_logger = logging.getLogger("docx_export")
 _REPLACEMENT_REGEX_CACHE: Dict[str, re.Pattern] = {}
 
 
+def _normalize_for_match(text: str) -> str:
+    """Нормализует текст для сопоставления: удаляет мягкие переносы, NBSP -> пробел, приводим к нижнему регистру (casefold)."""
+    if not text:
+        return ""
+    return text.replace("\u00AD", "").replace("\xa0", " ").casefold()
+
+
 def _get_whitespace_tolerant_pattern(source_text: str) -> re.Pattern:
     """
-    Возвращает скомпилированный regex для строки, где все виды пробелов (включая NBSP) свернуты в \s+.
-    Результат кешируется.
+    Возвращает скомпилированный regex для строки, где:
+    - Все пробелы (включая NBSP) свернуты в \\s+
+    - Дефисы/тире сопоставляются как один класс [-\u2011\u2013\u2014]
+    - Кавычки " — как один класс [\"“”«»]
+    - Апострофы ' — как один класс ['’`]
+    Результат кешируется. На вход подается уже нормализованный текст (без NBSP/soft hyphen, в нижнем регистре).
     """
     cached = _REPLACEMENT_REGEX_CACHE.get(source_text)
     if cached is not None:
         return cached
-    escaped = re.escape(source_text)
-    # Обычный пробел -> \s+
-    escaped = escaped.replace(r"\ ", r"\\s+")
-    # NBSP -> \s+
-    escaped = escaped.replace(re.escape("\xa0"), r"\\s+")
-    pattern = re.compile(escaped)
+
+    parts: List[str] = []
+    for ch in source_text:
+        if ch.isspace():
+            parts.append(r"\s+")
+        elif ch == "-":
+            parts.append(r"[-\u2011\u2013\u2014]")
+        elif ch in {'"', '“', '”', '«', '»'}:
+            parts.append(r"[\"“”«»]")
+        elif ch in {"'", "’", "`"}:
+            parts.append(r"['’`]")
+        else:
+            parts.append(re.escape(ch))
+
+    pattern = re.compile("".join(parts))
     _REPLACEMENT_REGEX_CACHE[source_text] = pattern
     return pattern
+
+# Варианты исходной строки для повышения совпадений
+_DEF_STRIP_QUOTE_CHARS = "\"“”«»'’`"
+_DEF_STRIP_PUNCT_TAIL = ".,!?;:…»”\u201d\u00bb\u2026)"  # финальная пунктуация/закрывающие
+
+
+def _generate_sentence_variants(text: str) -> List[str]:
+    base = text or ""
+    variants: List[str] = []
+    seen = set()
+
+    def push(val: str):
+        v = val.strip()
+        if v and v not in seen:
+            seen.add(v)
+            variants.append(v)
+
+    push(base)
+
+    # Удаляем внешние кавычки
+    stripped_quotes = base.strip(_DEF_STRIP_QUOTE_CHARS)
+    push(stripped_quotes)
+
+    # Удаляем финальную пунктуацию у обоих вариантов
+    push(stripped_quotes.rstrip(_DEF_STRIP_PUNCT_TAIL))
+    push(base.rstrip(_DEF_STRIP_PUNCT_TAIL))
+
+    # Удаляем и кавычки и пунктуацию
+    push(stripped_quotes.strip(_DEF_STRIP_QUOTE_CHARS).rstrip(_DEF_STRIP_PUNCT_TAIL))
+
+    # Вариант без двойных пробелов
+    push(" ".join(base.split()))
+
+    # Сортируем по длине убыванию (сначала длинные)
+    variants.sort(key=lambda s: len(s), reverse=True)
+    return variants
 
 
 def export_to_txt(document: Document, output_path: str) -> str:
@@ -132,36 +188,113 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
     if not paragraph.runs:
         return
 
-    # Собираем полный текст параграфа и упрощённую версию (схлопываем пробелы)
+    # Собираем полный текст параграфа и нормализуем его для сопоставления
     full_text = "".join(run.text or "" for run in paragraph.runs)
     original_text = full_text
-    simple_para = " ".join(full_text.split())
+    norm_text = _normalize_for_match(full_text)
 
-    # Быстрая замена: точные вхождения
+    changed = False
+
+    # Сначала быстрые точные замены на нормализованном тексте
     for src, dst in replacements:
         if not src:
             continue
-        if src in full_text:
-            full_text = full_text.replace(src, dst)
+        src_norm = _normalize_for_match(src)
+        if not src_norm:
+            continue
+        if src_norm in norm_text:
+            norm_text = norm_text.replace(src_norm, dst)
+            changed = True
 
-    # Предфильтр: если после точных замен ничего не поменялось, пробуем толерантные
-    if full_text == original_text:
-        # Для ускорения: пробуем только те предложения, чья нормализованная форма встречается в нормализованном параграфе
+    # Если быстрые замены ничего не изменили — пробуем толерантные regex только для релевантных строк
+    if not changed:
+        simple_para = " ".join(norm_text.split())
         for src, dst in replacements:
             if not src:
                 continue
-            simple_src = " ".join(src.split())
+            src_norm = _normalize_for_match(src)
+            if not src_norm:
+                continue
+            simple_src = " ".join(src_norm.split())
             if simple_src and simple_src in simple_para:
-                pattern = _get_whitespace_tolerant_pattern(src)
-                new_full_text = pattern.sub(dst, full_text)
-                if new_full_text != full_text:
-                    full_text = new_full_text
+                pattern = _get_whitespace_tolerant_pattern(src_norm)
+                new_text = pattern.sub(dst, norm_text)
+                if new_text != norm_text:
+                    norm_text = new_text
+                    changed = True
 
-    # Если текст изменился, записываем в первый run и очищаем остальные (жертвуем внутрипараграфным форматированием)
-    if full_text != original_text:
-        paragraph.runs[0].text = full_text
+    # Если что-то поменялось — записываем результат в первый run и очищаем остальные
+    if changed and norm_text != original_text:
+        paragraph.runs[0].text = norm_text
         for run in paragraph.runs[1:]:
             run.text = ""
+
+
+def _iter_all_wt_elements(doc: docx.Document) -> List[object]:
+    """Возвращает все элементы w:t из документа, включая заголовки/колонтитулы и фигуры/текстбоксы."""
+    wt = list(doc._element.xpath('.//w:t'))
+    # Заголовки и колонтитулы всех секций
+    try:
+        for section in doc.sections:
+            if section.header:
+                wt.extend(section.header._element.xpath('.//w:t'))
+            if section.footer:
+                wt.extend(section.footer._element.xpath('.//w:t'))
+    except Exception:
+        pass
+    return wt
+
+
+def _replace_in_wt_elements(doc: docx.Document, replacements: List[Tuple[str, str]]):
+    """Выполняет замены внутри всех w:t элементов. Замены выполняются на нормализованной копии строки.
+    Это покрывает текст в textbox'ах, заголовках и колонтитулах. Кросс-элемент замены не делаются (только в пределах одного w:t).
+    """
+    elements = _iter_all_wt_elements(doc)
+    if not elements:
+        return
+
+    for t in elements:
+        text = t.text or ""
+        if not text:
+            continue
+        norm = _normalize_for_match(text)
+        changed = False
+
+        # Прямые (по нормализованному) замены
+        for src, dst in replacements:
+            if not src:
+                continue
+            src_norm = _normalize_for_match(src)
+            if not src_norm:
+                continue
+            if src_norm in norm:
+                # применяем толерантный паттерн к исходному тексту (не к norm), чтобы сохранить исходные пробельные последовательности как есть
+                pattern = _get_whitespace_tolerant_pattern(src_norm)
+                new_text = pattern.sub(dst, _normalize_for_match(text))
+                if new_text != norm:
+                    # Мы оперировали на нормализованном представлении, возвращаем его как фактический текст (теряется локальное форматирование внутри этого w:t)
+                    t.text = new_text
+                    changed = True
+                    break
+
+        if changed:
+            continue
+
+        # Если прямых совпадений нет, пробуем простой contains-предфильтр и затем толерантный паттерн
+        simple_para = " ".join(norm.split())
+        for src, dst in replacements:
+            if not src:
+                continue
+            src_norm = _normalize_for_match(src)
+            if not src_norm:
+                continue
+            simple_src = " ".join(src_norm.split())
+            if simple_src and simple_src in simple_para:
+                pattern = _get_whitespace_tolerant_pattern(src_norm)
+                new_text = pattern.sub(dst, norm)
+                if new_text != norm:
+                    t.text = new_text
+                    break
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
@@ -170,13 +303,13 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
     Примечание: сохранение форматирования ограничено — при замене внутри run форматирование сохраняется,
     но предложения, разбитые на несколько run, могут быть заменены частично.
     """
-    # Словарь замен: оригинал -> перевод
+    # Словарь замен: оригинал (включая варианты) -> перевод
     sentence_map: List[Tuple[str, str]] = []
     for s in document.sentences.all().order_by("sentence_number"):
         if hasattr(s, "translation") and s.translation and s.translation.translated_text:
-            # более длинные исходные строки должны заменяться сначала
-            sentence_map.append((s.original_text, s.translation.translated_text))
-    # Сортируем по длине исходного текста по убыванию
+            for variant in _generate_sentence_variants(s.original_text or ""):
+                sentence_map.append((variant, s.translation.translated_text))
+    # Сортируем по длине исходного текста по убыванию (длинные сначала)
     sentence_map.sort(key=lambda x: len(x[0] or ""), reverse=True)
 
     doc = docx.Document(original_docx_path)
@@ -184,6 +317,9 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
     # Параграфы документа и ячейки таблиц
     for paragraph in _iter_all_paragraphs(doc):
         _replace_text_in_runs(paragraph, sentence_map)
+
+    # Дополнительно: замены внутри всех w:t (покрывает textbox/заголовки/колонтитулы)
+    _replace_in_wt_elements(doc, sentence_map)
 
     doc.save(output_path)
     return output_path
