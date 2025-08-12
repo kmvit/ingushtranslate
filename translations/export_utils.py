@@ -274,9 +274,12 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
     
     # Получаем все предложения с переводами
     sentences = list(document.sentences.all().order_by("sentence_number"))
-    translated_sentences = [s for s in sentences if s.has_translation and s.translation.translated_text]
+    # Более строгая проверка: перевод должен существовать и содержать осмысленный текст (минимум 3 символа)
+    translated_sentences = [s for s in sentences if hasattr(s, 'translation') and s.translation and s.translation.translated_text and len(s.translation.translated_text.strip()) >= 3]
     
     docx_logger.info(f"Всего предложений: {len(sentences)}, с переводами: {len(translated_sentences)}")
+    
+
     
     # Создаем новый документ
     doc = docx.Document()
@@ -308,14 +311,21 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
         doc.add_paragraph("Нет предложений для перевода.")
     else:
         for sentence in sentences:
-            if sentence.has_translation and sentence.translation.translated_text:
+            # Более строгая проверка наличия перевода (минимум 3 символа для осмысленного перевода)
+            has_valid_translation = (
+                hasattr(sentence, 'translation') and 
+                sentence.translation and 
+                sentence.translation.translated_text and 
+                len(sentence.translation.translated_text.strip()) >= 3
+            )
+            
+            if has_valid_translation:
                 # Добавляем переведенный текст
                 translated_text = sentence.translation.translated_text.strip()
-                if translated_text:
-                    # Добавляем номер предложения в скобках для удобства
-                    paragraph = doc.add_paragraph()
-                    paragraph.add_run(f"({sentence.sentence_number}) ").bold = True
-                    paragraph.add_run(translated_text)
+                # Добавляем номер предложения в скобках для удобства
+                paragraph = doc.add_paragraph()
+                paragraph.add_run(f"({sentence.sentence_number}) ").bold = True
+                paragraph.add_run(translated_text)
             else:
                 # Если перевода нет, добавляем оригинальный текст с пометкой
                 original_text = sentence.original_text.strip()
