@@ -32,33 +32,36 @@ def _normalize_for_match(text: str) -> str:
     return text.replace("\u00AD", "").replace("\xa0", " ").casefold()
 
 
-def _get_whitespace_tolerant_pattern(source_text: str) -> re.Pattern:
+def _build_flexible_pattern(source_text: str) -> re.Pattern:
     """
-    Возвращает скомпилированный regex для строки, где:
-    - Все пробелы (включая NBSP) свернуты в \\s+
-    - Дефисы/тире сопоставляются как один класс [-\u2011\u2013\u2014]
-    - Кавычки " — как один класс [\"“”«»]
-    - Апострофы ' — как один класс ['’`]
-    Результат кешируется. На вход подается уже нормализованный текст (без NBSP/soft hyphen, в нижнем регистре).
+    Строит толерантный regex-паттерн из исходной строки:
+    - Все виды пробелов (включая NBSP) -> \\s+
+    - Тире/дефисы -> один класс [-\u2011\u2013\u2014]
+    - Кавычки -> [\"“”«»]
+    - Апострофы -> ['’`]
+    - Между каждым символом допускаем необязательный soft hyphen (\u00AD?), чтобы матчить тексты с мягкими переносами.
+    Паттерн компилируется с re.IGNORECASE.
+    Результат кешируется по исходной строке.
     """
     cached = _REPLACEMENT_REGEX_CACHE.get(source_text)
     if cached is not None:
         return cached
 
-    parts: List[str] = []
+    tokens: List[str] = []
     for ch in source_text:
-        if ch.isspace():
-            parts.append(r"\s+")
+        if ch.isspace() or ch == "\xa0":
+            tokens.append(r"\s+")
         elif ch == "-":
-            parts.append(r"[-\u2011\u2013\u2014]")
+            tokens.append(r"[-\u2011\u2013\u2014]")
         elif ch in {'"', '“', '”', '«', '»'}:
-            parts.append(r"[\"“”«»]")
+            tokens.append(r"[\"“”«»]")
         elif ch in {"'", "’", "`"}:
-            parts.append(r"['’`]")
+            tokens.append(r"['’`]")
         else:
-            parts.append(re.escape(ch))
-
-    pattern = re.compile("".join(parts))
+            tokens.append(re.escape(ch))
+    # Вставляем необязательный мягкий перенос между токенами
+    pattern_str = r"\u00AD?".join(tokens)
+    pattern = re.compile(pattern_str, re.IGNORECASE)
     _REPLACEMENT_REGEX_CACHE[source_text] = pattern
     return pattern
 
@@ -188,46 +191,33 @@ def _replace_text_in_runs(paragraph: "docx.text.paragraph.Paragraph", replacemen
     if not paragraph.runs:
         return
 
-    # Собираем полный текст параграфа и нормализуем его для сопоставления
+    # Собираем оригинальный полный текст параграфа
     full_text = "".join(run.text or "" for run in paragraph.runs)
     original_text = full_text
-    norm_text = _normalize_for_match(full_text)
 
-    changed = False
-
-    # Сначала быстрые точные замены на нормализованном тексте
+    # Быстрая точная замена по оригиналу
     for src, dst in replacements:
         if not src:
             continue
-        src_norm = _normalize_for_match(src)
-        if not src_norm:
-            continue
-        if src_norm in norm_text:
-            norm_text = norm_text.replace(src_norm, dst)
-            changed = True
+        if src in full_text:
+            full_text = full_text.replace(src, dst)
 
-    # Если быстрые замены ничего не изменили — пробуем толерантные regex только для релевантных строк
-    if not changed:
-        simple_para = " ".join(norm_text.split())
+    # Если изменений нет, пробуем толерантные замены для релевантных предложений
+    if full_text == original_text:
+        simple_para = " ".join(_normalize_for_match(full_text).split())
         for src, dst in replacements:
             if not src:
                 continue
-            src_norm = _normalize_for_match(src)
-            if not src_norm:
-                continue
-            simple_src = " ".join(src_norm.split())
+            simple_src = " ".join(_normalize_for_match(src).split())
             if simple_src and simple_src in simple_para:
-                pattern = _get_whitespace_tolerant_pattern(src_norm)
-                new_text = pattern.sub(dst, norm_text)
-                if new_text != norm_text:
-                    norm_text = new_text
-                    changed = True
+                pattern = _build_flexible_pattern(src)
+                new_full_text = pattern.sub(dst, full_text)
+                if new_full_text != full_text:
+                    full_text = new_full_text
 
-    # Если что-то поменялось — записываем результат в первый run и очищаем остальные
-    if changed and norm_text != original_text:
-        paragraph.runs[0].text = norm_text
-        for run in paragraph.runs[1:]:
-            run.text = ""
+    # Если текст изменился — перезаписываем параграф целиком (потеря локального форматирования внутри параграфа допустима ради покрытия)
+    if full_text != original_text:
+        paragraph.text = full_text
 
 
 def _iter_all_wt_elements(doc: docx.Document) -> List[object]:
@@ -246,9 +236,7 @@ def _iter_all_wt_elements(doc: docx.Document) -> List[object]:
 
 
 def _replace_in_wt_elements(doc: docx.Document, replacements: List[Tuple[str, str]]):
-    """Выполняет замены внутри всех w:t элементов. Замены выполняются на нормализованной копии строки.
-    Это покрывает текст в textbox'ах, заголовках и колонтитулах. Кросс-элемент замены не делаются (только в пределах одного w:t).
-    """
+    """Выполняет замены внутри всех w:t элементов. Толерантные замены применяются к исходному тексту."""
     elements = _iter_all_wt_elements(doc)
     if not elements:
         return
@@ -257,44 +245,24 @@ def _replace_in_wt_elements(doc: docx.Document, replacements: List[Tuple[str, st
         text = t.text or ""
         if not text:
             continue
-        norm = _normalize_for_match(text)
-        changed = False
 
-        # Прямые (по нормализованному) замены
+        original = text
+        # Сначала точные замены
         for src, dst in replacements:
-            if not src:
-                continue
-            src_norm = _normalize_for_match(src)
-            if not src_norm:
-                continue
-            if src_norm in norm:
-                # применяем толерантный паттерн к исходному тексту (не к norm), чтобы сохранить исходные пробельные последовательности как есть
-                pattern = _get_whitespace_tolerant_pattern(src_norm)
-                new_text = pattern.sub(dst, _normalize_for_match(text))
-                if new_text != norm:
-                    # Мы оперировали на нормализованном представлении, возвращаем его как фактический текст (теряется локальное форматирование внутри этого w:t)
-                    t.text = new_text
-                    changed = True
-                    break
-
-        if changed:
-            continue
-
-        # Если прямых совпадений нет, пробуем простой contains-предфильтр и затем толерантный паттерн
-        simple_para = " ".join(norm.split())
-        for src, dst in replacements:
-            if not src:
-                continue
-            src_norm = _normalize_for_match(src)
-            if not src_norm:
-                continue
-            simple_src = " ".join(src_norm.split())
-            if simple_src and simple_src in simple_para:
-                pattern = _get_whitespace_tolerant_pattern(src_norm)
-                new_text = pattern.sub(dst, norm)
-                if new_text != norm:
-                    t.text = new_text
-                    break
+            if src and src in text:
+                text = text.replace(src, dst)
+        # Затем толерантные только при необходимости
+        if text == original:
+            simple_para = " ".join(_normalize_for_match(text).split())
+            for src, dst in replacements:
+                simple_src = " ".join(_normalize_for_match(src).split())
+                if simple_src and simple_src in simple_para:
+                    pattern = _build_flexible_pattern(src)
+                    new_text = pattern.sub(dst, text)
+                    if new_text != text:
+                        text = new_text
+        if text != original:
+            t.text = text
 
 
 def export_to_docx_translated_only(document: Document, original_docx_path: str, output_path: str) -> str:
