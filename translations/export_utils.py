@@ -379,17 +379,18 @@ def export_document_translations(document: Document, format_type: str) -> str:
     export_dir = os.path.join(default_storage.location, "exports")
     os.makedirs(export_dir, exist_ok=True)
 
-    # Генерируем имя файла
-    base_name = f"translation_{document.id}_{document.title.replace(' ', '_')}"
+    # Генерируем базовые имена
+    base_name = f"translation_{document.id}_{document.title.replace(' ', '_')}"  # для не-DOCX
+    docx_base_name = document.title.replace(' ', '_')  # для DOCX именования по требованию
 
     if format_type == "txt":
         output_path = os.path.join(export_dir, f"{base_name}.txt")
         return export_to_txt(document, output_path)
     elif format_type == "docx_table":
-        output_path = os.path.join(export_dir, f"{base_name}_table.docx")
+        output_path = os.path.join(export_dir, f"{docx_base_name}_table_(inh).docx")
         return export_to_docx(document, output_path)
     elif format_type == "docx_translated":
-        output_path = os.path.join(export_dir, f"{base_name}_translated_only.docx")
+        output_path = os.path.join(export_dir, f"{docx_base_name}_full_(inh).docx")
         # Пытаемся использовать исходный DOCX для максимально точного воспроизведения
         original_path = None
         try:
@@ -426,8 +427,10 @@ def export_document_all_formats(document: Document) -> str:
 
         # Экспортируем во все форматы
         txt_path = os.path.join(temp_dir, f"{base_name}.txt")
-        docx_table_path = os.path.join(temp_dir, f"{base_name}_table.docx")
-        docx_translated_path = os.path.join(temp_dir, f"{base_name}_translated_only.docx")
+        # Для DOCX — используем схему именования, основанную на названии документа
+        docx_base_name = document.title.replace(' ', '_')
+        docx_table_path = os.path.join(temp_dir, f"{docx_base_name}_table_(inh).docx")
+        docx_translated_path = os.path.join(temp_dir, f"{docx_base_name}_full_(inh).docx")
         xlsx_path = os.path.join(temp_dir, f"{base_name}.xlsx")
 
         # Создаем файлы
