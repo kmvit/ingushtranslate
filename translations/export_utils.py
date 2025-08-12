@@ -278,33 +278,10 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
     translated_sentences = [s for s in sentences if hasattr(s, 'translation') and s.translation and s.translation.translated_text and len(s.translation.translated_text.strip()) >= 3]
     
     docx_logger.info(f"Всего предложений: {len(sentences)}, с переводами: {len(translated_sentences)}")
-    
 
     
     # Создаем новый документ
     doc = docx.Document()
-    
-    # Добавляем заголовок документа
-    title_paragraph = doc.add_paragraph()
-    title_run = title_paragraph.add_run(f"Перевод документа: {document.title}")
-    title_run.bold = True
-    title_run.font.size = docx.shared.Pt(16)
-    
-    # Добавляем статистику
-    stats_paragraph = doc.add_paragraph()
-    if len(sentences) > 0:
-        percentage = round(len(translated_sentences) / len(sentences) * 100, 1)
-        stats_paragraph.add_run(f"Статистика: {len(translated_sentences)} из {len(sentences)} предложений переведено")
-        stats_paragraph.add_run(f" ({percentage}%)")
-    else:
-        stats_paragraph.add_run("Статистика: нет предложений для перевода")
-    
-    # Добавляем информацию о документе
-    info_paragraph = doc.add_paragraph()
-    info_paragraph.add_run(f"Дата экспорта: {document.uploaded_at.strftime('%d.%m.%Y %H:%M')}")
-    
-    # Добавляем пустую строку
-    doc.add_paragraph()
     
     # Добавляем переведенные предложения
     if len(sentences) == 0:
@@ -322,16 +299,13 @@ def export_to_docx_translated_only(document: Document, original_docx_path: str, 
             if has_valid_translation:
                 # Добавляем переведенный текст
                 translated_text = sentence.translation.translated_text.strip()
-                # Добавляем номер предложения в скобках для удобства
-                paragraph = doc.add_paragraph()
-                paragraph.add_run(f"({sentence.sentence_number}) ").bold = True
-                paragraph.add_run(translated_text)
+                doc.add_paragraph(translated_text)
             else:
                 # Если перевода нет, добавляем оригинальный текст с пометкой
                 original_text = sentence.original_text.strip()
                 if original_text:
                     paragraph = doc.add_paragraph()
-                    paragraph.add_run(f"({sentence.sentence_number}) [НЕ ПЕРЕВЕДЕНО] ").bold = True
+                    paragraph.add_run(f"[НЕ ПЕРЕВЕДЕНО] ").bold = True
                     paragraph.add_run(original_text).italic = True
     
     # Сохраняем документ
