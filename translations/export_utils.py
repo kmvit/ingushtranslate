@@ -406,7 +406,7 @@ def export_document_translations(document: Document, format_type: str) -> str:
     os.makedirs(export_dir, exist_ok=True)
 
     # Генерируем базовые имена
-    base_name = f"translation_{document.id}_{document.title.replace(' ', '_')}"  # для не-DOCX
+    base_name = f"{document.title.replace(' ', '_')}"  # для не-DOCX
     docx_base_name = document.title.replace(' ', '_')  # для DOCX именования по требованию
 
     if format_type == "txt":
