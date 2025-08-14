@@ -1008,17 +1008,17 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
 
                 # Имя и тип для каждого поддерживаемого формата
                 if format == "docx_table":
-                    actual_name = f"{orig_stem}_(inh)_table.docx"
+                    actual_name = f"{orig_stem}_table_(inh).docx"
                     content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 elif format == "docx_translated":
-                    actual_name = f"{orig_stem}_(inh)_translated_only.docx"
+                    actual_name = f"{orig_stem}_full_(inh).docx"
                     content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 else:
                     if output_ext == ".zip":
-                        actual_name = f"{orig_stem}_(inh)_docx_variants.zip"
+                        actual_name = f"{orig_stem}_docx_variants_(inh).zip"
                         content_type = "application/zip"
                     else:
-                        actual_name = f"{orig_stem}_(inh){output_ext}"
+                        actual_name = f"{orig_stem}{output_ext}_(inh)"
                         guessed_type, _ = mimetypes.guess_type(actual_name)
                         content_type = guessed_type or "application/octet-stream"
                         if output_ext == ".txt" and "charset" not in content_type:

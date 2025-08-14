@@ -4,3 +4,16 @@
 2025-08-12 13:08:22,117 [INFO] docx_export: Начало экспорта DOCX (переведенный текст) для документа id=4 title='16799_0625-51_01_стр._01-25'
 2025-08-12 13:08:22,288 [INFO] docx_export: Всего предложений: 1285, с переводами: 16
 2025-08-12 13:08:22,449 [INFO] docx_export: DOCX (переведенный текст) сохранен: '/var/folders/wn/hckw8z5x7d53kr66j195zhlm0000gn/T/tmpjgsjh82u.docx'
+2025-08-14 07:55:14,105 [INFO] docx_export: Начало экспорта DOCX (таблица) для документа id=37 title='16799_0625-51_04_Папка_1_стр._76-100'
+2025-08-14 07:55:14,141 [INFO] docx_export: Создание таблицы на 1255 строк (+1 заголовок)
+2025-08-14 07:55:14,313 [INFO] docx_export: Заполнено строк: 1000/1255
+2025-08-14 07:55:14,353 [INFO] docx_export: Сформирована таблица: строк=1255; путь сохранения='/Users/home/PycharmProjects/ingushtranslate/media/exports/16799_0625-51_04_Папка_1_стр._76-100_table_(inh).docx'
+2025-08-14 07:55:14,385 [INFO] docx_export: DOCX (таблица) сохранен: '/Users/home/PycharmProjects/ingushtranslate/media/exports/16799_0625-51_04_Папка_1_стр._76-100_table_(inh).docx'
+2025-08-14 07:56:03,781 [INFO] docx_export: Начало экспорта DOCX (таблица) для документа id=37 title='16799_0625-51_04_Папка_1_стр._76-100'
+2025-08-14 07:56:03,818 [INFO] docx_export: Создание таблицы на 1255 строк (+1 заголовок)
+2025-08-14 07:56:03,995 [INFO] docx_export: Заполнено строк: 1000/1255
+2025-08-14 07:56:04,036 [INFO] docx_export: Сформирована таблица: строк=1255; путь сохранения='/Users/home/PycharmProjects/ingushtranslate/media/exports/16799_0625-51_04_Папка_1_стр._76-100_table_(inh).docx'
+2025-08-14 07:56:04,068 [INFO] docx_export: DOCX (таблица) сохранен: '/Users/home/PycharmProjects/ingushtranslate/media/exports/16799_0625-51_04_Папка_1_стр._76-100_table_(inh).docx'
+2025-08-14 07:56:15,264 [INFO] docx_export: Начало экспорта DOCX (переведенный текст) для документа id=37 title='16799_0625-51_04_Папка_1_стр._76-100'
+2025-08-14 07:56:15,462 [INFO] docx_export: Всего предложений: 1255, с переводами: 0
+2025-08-14 07:56:15,613 [INFO] docx_export: DOCX (переведенный текст) сохранен: '/Users/home/PycharmProjects/ingushtranslate/media/exports/16799_0625-51_04_Папка_1_стр._76-100_full_(inh).docx'
