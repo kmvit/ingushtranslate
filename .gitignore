@@ -279,4 +279,4 @@ cython_debug/
 
 documentation/
 
-log/
+log
