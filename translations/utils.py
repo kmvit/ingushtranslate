@@ -58,19 +58,11 @@ def process_txt_file(file_path: str) -> List[str]:
 
 def process_docx_file(file_path: str) -> List[str]:
     """
-    Обрабатывает DOCX файл и извлекает предложения
+    Обрабатывает DOCX файл и извлекает абзацы
     """
     try:
         doc = docx.Document(file_path)
-        text_content = []
-
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text_content.append(paragraph.text)
-
-        # Объединяем весь текст и разбиваем на предложения
-        full_text = " ".join(text_content)
-        return extract_sentences_from_text(full_text)
+        return [p.text.strip() for p in doc.paragraphs if p.text.strip()]
     except Exception as e:
         raise ValidationError(f"Ошибка при чтении DOCX файла: {str(e)}")
 
