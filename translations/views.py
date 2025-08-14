@@ -1006,23 +1006,13 @@ class ExportDocumentView(LoginRequiredMixin, AdminOrRepresentativeMixin, View):
                 orig_stem = document.title
                 output_ext = os.path.splitext(file_path)[1].lower()
 
-                # Имя и тип для каждого поддерживаемого формата
-                if format == "docx_table":
-                    actual_name = f"{orig_stem}_table_(inh).docx"
-                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                elif format == "docx_translated":
-                    actual_name = f"{orig_stem}_full_(inh).docx"
-                    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                else:
-                    if output_ext == ".zip":
-                        actual_name = f"{orig_stem}_docx_variants_(inh).zip"
-                        content_type = "application/zip"
-                    else:
-                        actual_name = f"{orig_stem}{output_ext}_(inh)"
-                        guessed_type, _ = mimetypes.guess_type(actual_name)
-                        content_type = guessed_type or "application/octet-stream"
-                        if output_ext == ".txt" and "charset" not in content_type:
-                            content_type = "text/plain; charset=utf-8"
+                # Имя файла, возвращаемое export_document_translations, уже корректное и не временное.
+                # Здесь мы просто используем его для Content-Disposition, чтобы имя при скачивании совпадало с реальным файлом.
+                actual_name = os.path.basename(file_path)
+                guessed_type, _ = mimetypes.guess_type(actual_name)
+                content_type = guessed_type or "application/octet-stream"
+                if actual_name.lower().endswith(".txt") and "charset" not in content_type:
+                    content_type = "text/plain; charset=utf-8"
 
                 name_stem, ext = os.path.splitext(actual_name)
                 # ASCII-совместимое имя для filename= (RFC 6266 фолбэк)

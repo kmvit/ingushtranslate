@@ -410,7 +410,7 @@ def export_document_translations(document: Document, format_type: str) -> str:
     docx_base_name = document.title.replace(' ', '_')  # для DOCX именования по требованию
 
     if format_type == "txt":
-        output_path = os.path.join(export_dir, f"{base_name}.txt")
+        output_path = os.path.join(export_dir, f"{base_name}(inh).txt")
         return export_to_txt(document, output_path)
     elif format_type == "docx_table":
         output_path = os.path.join(export_dir, f"{docx_base_name}_table_(inh).docx")
@@ -432,7 +432,7 @@ def export_document_translations(document: Document, format_type: str) -> str:
             
         return export_to_docx_translated_only(document, original_path, output_path)
     elif format_type == "xlsx":
-        output_path = os.path.join(export_dir, f"{base_name}.xlsx")
+        output_path = os.path.join(export_dir, f"{base_name}(inh).xlsx")
         return export_to_xlsx(document, output_path)
     else:
         raise ValueError(f"Неподдерживаемый формат экспорта: {format_type}")
